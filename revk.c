@@ -3120,7 +3120,7 @@ get_status_text (void)
 
 #ifndef  CONFIG_REVK_OLD_SETTINGS
 void
-revk_web_setting_info (httpd_req_t * req, const char *fmt, ...)
+revk_web_setting_title (httpd_req_t * req, const char *fmt, ...)
 {
    char *info = NULL;
    va_list ap;
@@ -3128,6 +3128,20 @@ revk_web_setting_info (httpd_req_t * req, const char *fmt, ...)
    vasprintf (&info, fmt, ap);
    va_end (ap);
    revk_web_send (req, "<tr><th align=left colspan=3>%s</th></tr>", info);
+   free (info);
+}
+#endif
+
+#ifndef  CONFIG_REVK_OLD_SETTINGS
+void
+revk_web_setting_note (httpd_req_t * req, const char *fmt, ...)
+{
+   char *info = NULL;
+   va_list ap;
+   va_start (ap, fmt);
+   vasprintf (&info, fmt, ap);
+   va_end (ap);
+   revk_web_send (req, "<tr><td colspan=3>%s</th></tr>", info);
    free (info);
 }
 #endif
