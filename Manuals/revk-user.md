@@ -164,3 +164,5 @@ The status LED is defined by `blink`, which is an array of GPIO. It can be
 At startup (until 2 seconds) the GREEN LED is on
 
 There are some defaults, but the flash speed and sequence of colours can be defined by the application. Not all applications have this setting.
+
+See (Default LEDs)(LED.md) for standard/default LED sequences.
