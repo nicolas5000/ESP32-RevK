@@ -46,7 +46,7 @@ ha_config_opts (const char *config, ha_config_t h)
       if (h.unit)
          jo_string (j, "unit_of_meas", h.unit);
       jo_stringf (j, "val_tpl", "{{value_json.%s}}", h.field ? : h.id);
-   } else if (!strcmp (config, "switch"))
+   } else if (!strcmp (config, "switch") || !strcmp (config, "light"))
    {
       if (h.cmd)
          addpath ("cmd_t", hacmd, h.cmd);
