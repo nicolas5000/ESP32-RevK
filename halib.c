@@ -16,7 +16,7 @@ ha_config_opts (const char *config, ha_config_t h)
    jo_t j = jo_object_alloc ();
    void addpath (const char *tag, const char *base, const char *path)
    {                            // Allow path. NULL is base, /suffix is after base, non / is absolute path
-      if (!path)
+      if (!path || !*path)
          jo_string (j, tag, base);
       else if (*path == '/')
          jo_stringf (j, tag, "%s%s", base, path);
