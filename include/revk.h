@@ -40,7 +40,7 @@
 #endif
 
 #ifndef  CONFIG_REVK_OLD_SETTINGS
-#include <settings.h>
+#include "../../main/settings.h"
 #endif
 
 #include "revk_ctype.h"
