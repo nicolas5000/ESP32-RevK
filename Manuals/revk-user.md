@@ -88,7 +88,8 @@ The device may have any number of commands documents, but there are some command
 |-------|-------|
 |`upgrade`|This does an *over the air* upgrade from the setting defined `otahost`. You can include a URL as the argument (`http://` only, not `https`). Usually the device will be build with code signing to ensure the file is genuine.|
 |`restart`|This does a restart of the device|
-|`factory`|This does a factory reset of all settings, the argument has to be a string of the MAC address and the app name, e.g. `112233445566GPS`|
+|`factory`|This does a factory reset of all non fixed settings (important for retaining GPIO), the argument has to be a string of the MAC address and the app name, e.g. `112233445566GPS`|
+|`fullfactory`|This does a factory reset of all settings, the argument has to be a string of the MAC address and the app name, e.g. `112233445566GPS`|
 |`ps`|This provides a process list, if `FREERTOS_USE_TRACE_FACILITY` is set in `sdkconfig`|
 
 ### Settings
@@ -150,6 +151,7 @@ Sending a `setting` message with no suffix and no payload causes a `setting` res
 |`topicevent`|The topic for `event`|
 |`topicinfo`|The topic for `info`|
 |`topicerror`|The topic for `error`|
+|`factorygpio`|GPIO for factory reset, press 3 times without 3 second delay.|
 
 #### Status LED
 
@@ -162,3 +164,5 @@ The status LED is defined by `blink`, which is an array of GPIO. It can be
 At startup (until 2 seconds) the GREEN LED is on
 
 There are some defaults, but the flash speed and sequence of colours can be defined by the application. Not all applications have this setting.
+
+See [Default LEDs](LED.md) for standard/default LED sequences.

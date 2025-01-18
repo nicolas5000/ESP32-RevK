@@ -55,15 +55,18 @@ struct lwmqtt_s
    unsigned short seq;
    uint32_t connecttime;        // Time of connect
    uint8_t backoff:4;           // Reconnect backoff
+   uint8_t failed:3;            // Login received error
    uint8_t running:1;           // Should still run
+   uint8_t close:1;             // Close this handle cleanly and reconnect
    uint8_t server:1;            // This is a server
    uint8_t connected:1;         // Login sent/received
-   uint8_t failed:3;            // Login received error
-   uint8_t hostname_ref;        // The buf below is not malloc'd
-   uint8_t tlsname_ref;         // The buf below is not malloc'd
    uint8_t ca_cert_ref:1;       // The _buf below is not malloc'd
    uint8_t our_cert_ref:1;      // The _buf below is not malloc'd
    uint8_t our_key_ref:1;       // The _buf below is not malloc'd
+   uint8_t hostname_ref:1;      // The buf below is not malloc'd
+   uint8_t tlsname_ref:1;       // The buf below is not malloc'd
+   uint8_t dnsipv6:1;           // DNS has IPv6
+   uint8_t ipv6:1;              // Connection is IPv6
    void *ca_cert_buf;           // For checking server
    int ca_cert_bytes;
    void *our_cert_buf;          // For auth
@@ -323,6 +326,27 @@ lwmqtt_end (lwmqtt_t * handle)
    *handle = NULL;
 }
 
+void
+lwmqtt_reconnect (lwmqtt_t handle)
+{
+   if (!handle)
+      return;
+   if (handle->running)
+   {
+      ESP_LOGD (TAG, "Closing to reconnect");
+      handle->close = 1;
+   }
+}
+
+void
+lwmqtt_reconnect6 (lwmqtt_t handle)
+{
+   if (!handle)
+      return;
+   if (handle->running && (handle->dnsipv6 || handle->tls) && !handle->ipv6)
+      handle->close = 1;        // Reconnect as IPv6 (we don't know for TLS so reconnect anyway)
+}
+
 // Subscribe (return is non null error message if failed)
 const char *
 lwmqtt_subscribeub (lwmqtt_t handle, const char *topic, char unsubscribe)
@@ -464,9 +488,9 @@ lwmqtt_loop (lwmqtt_t handle)
    unsigned char *buf = 0;
    int buflen = 0;
    int pos = 0;
-   uint32_t kacheck = uptime()+60; // Response time check
-   uint32_t ka = uptime () + (handle->server ? 5 : handle->keepalive);   // Server does not know KA initially
-   while (handle->running)
+   uint32_t kacheck = uptime () + 60;   // Response time check
+   uint32_t ka = uptime () + (handle->server ? 5 : handle->keepalive);  // Server does not know KA initially
+   while (handle->running && !handle->close)
    {                            // Loop handling messages received, and timeouts
       int need = 0;
       if (pos < 2)
@@ -494,8 +518,8 @@ lwmqtt_loop (lwmqtt_t handle)
             xSemaphoreTake (handle->mutex, portMAX_DELAY);
             hwrite (handle, b, sizeof (b));
             xSemaphoreGive (handle->mutex);
-            ka = uptime () + handle->keepalive;      // Client KA next
-            kacheck = uptime () + 10; // Expect KA resp
+            ka = uptime () + handle->keepalive; // Client KA next
+            kacheck = uptime () + 10;   // Expect KA resp
          } else if (kacheck && kacheck < uptime ())
          {                      // only set for client anyway
             ESP_LOGE (TAG, "KA fail");
@@ -671,15 +695,16 @@ lwmqtt_loop (lwmqtt_t handle)
    }
    handle->connected = 0;
    freez (buf);
-   if (!handle->server && !handle->running)
+   if (!handle->server && (handle->close || !handle->running))
    {                            // Close connection - as was clean
-      ESP_LOGE (TAG, "Closed cleanly");
+      ESP_LOGE (TAG, "Closed cleanly%s", handle->close ? " to reconnect" : "");
       uint8_t b[] = { 0xE0, 0x00 };     // Disconnect cleanly
       xSemaphoreTake (handle->mutex, portMAX_DELAY);
       hwrite (handle, b, sizeof (b));
       xSemaphoreGive (handle->mutex);
    }
    handle_close (handle);
+   handle->close = 0;
    if (handle->callback)
       handle->callback (handle->arg, NULL, 0, NULL);
 }
@@ -712,82 +737,134 @@ client_task (void *pvParameters)
       // Connect
       ESP_LOGI (TAG, "Connecting %s:%d", hostname, port);
       // Can connect using TLS or non TLS with just sock set instead
-      if (handle->ca_cert_bytes || handle->crt_bundle_attach)
+      if (revk_has_ip ())
       {
-         esp_tls_t *tls = NULL;
-         esp_tls_cfg_t cfg = {
-            .cacert_buf = handle->ca_cert_buf,
-            .cacert_bytes = handle->ca_cert_bytes,
-            .common_name = handle->tlsname,
-            .clientcert_buf = handle->our_cert_buf,
-            .clientcert_bytes = handle->our_cert_bytes,
-            .clientkey_buf = handle->our_key_buf,
-            .clientkey_bytes = handle->our_key_bytes,
-            .crt_bundle_attach = handle->crt_bundle_attach,
-         };
-         tls = esp_tls_init ();
-         if (esp_tls_conn_new_sync (hostname, strlen (hostname), port, &cfg, tls) != 1)
+         if (handle->ca_cert_bytes || handle->crt_bundle_attach)
          {
-            ESP_LOGE (TAG, "Could not TLS connect to %s:%d", hostname, port);
-            free (tls);
+            int tryconnect (uint8_t ip6)
+            {
+               if (handle->sock >= 0)
+                  return 1;     // connected already
+               esp_tls_t *tls = NULL;
+               esp_tls_cfg_t cfg = {
+                  .cacert_buf = handle->ca_cert_buf,
+                  .cacert_bytes = handle->ca_cert_bytes,
+                  .common_name = handle->tlsname,
+                  .clientcert_buf = handle->our_cert_buf,
+                  .clientcert_bytes = handle->our_cert_bytes,
+                  .clientkey_buf = handle->our_key_buf,
+                  .clientkey_bytes = handle->our_key_bytes,
+                  .crt_bundle_attach = handle->crt_bundle_attach,
+                  .addr_family = (ip6 ? ESP_TLS_AF_INET6 : ESP_TLS_AF_INET),
+               };
+               tls = esp_tls_init ();
+               if (esp_tls_conn_new_sync (hostname, strlen (hostname), port, &cfg, tls) != 1)
+               {
+                  free (tls);
+                  return 0;
+               }
+               handle->tls = tls;
+               esp_tls_get_conn_sockfd (handle->tls, &handle->sock);
+               if (ip6)
+               {
+                  handle->ipv6 = 1;
+                  handle->close = 0;
+               }
+               return 1;
+            }
+            tryconnect (1);     // Explicit try IPv6 first
+            tryconnect (0);
          } else
-         {
-            handle->tls = tls;
-            esp_tls_get_conn_sockfd (handle->tls, &handle->sock);
-            ESP_LOGI (TAG, "Connected %s:%d", hostname, port);
-         }
-      } else
-      {                         // Non TLS
-         // This is annoying as it should just pick IPv6 as preferred, but it sort of works
-         // May be better as a generic connect, and we are also rather assuming TLS ^ will connect IPv6 is available
-         int tryconnect (int fam)
-         {
-            if (handle->sock >= 0)
-               return 0;        // connected
-          struct addrinfo base = { ai_family: fam, ai_socktype:SOCK_STREAM };
-            struct addrinfo *a = 0,
-               *p = NULL;
+         {                      // Non TLS
             char sport[6];
             snprintf (sport, sizeof (sport), "%d", port);
-            if (getaddrinfo (hostname, sport, &base, &a) || !a)
-               return 0;
-            for (p = a; p; p = p->ai_next)
+            int tryconnect (uint8_t ip6)
             {
-               handle->sock = socket (p->ai_family, p->ai_socktype, p->ai_protocol);
-               if (handle->sock < 0)
-                  continue;
-               if (connect (handle->sock, p->ai_addr, p->ai_addrlen))
+               if (handle->sock >= 0)
+                  return 1;     // connected already
+             struct addrinfo base = { ai_family: ip6 ? AF_INET6 : AF_INET, ai_socktype:SOCK_STREAM };
+               struct addrinfo *a = 0,
+                  *p = NULL;
+               if (!getaddrinfo (hostname, sport, &base, &a) && a)
                {
-                  close (handle->sock);
-                  handle->sock = -1;
-                  continue;
+#if 0                           // Debug log the getaddrinfo result - it seems UNSPEC after say IP6 give only IP6,so we need to check 6 and 4 separately
+                  ESP_LOGE (TAG, "getaddrinfo %s %s", ip6 ? "IPv6" : "IPv4", hostname);
+                  for (p = a; p; p = p->ai_next)
+                  {
+                     char from[INET6_ADDRSTRLEN + 1] = "";
+                     if (p->ai_family == AF_INET)
+                        inet_ntop (p->ai_family, &((struct sockaddr_in *) (p->ai_addr))->sin_addr, from, sizeof (from));
+                     else
+                        inet_ntop (p->ai_family, &((struct sockaddr_in6 *) (p->ai_addr))->sin6_addr, from, sizeof (from));
+                     ESP_LOGE (TAG, "%s", from);
+                  }
+#endif
+                  for (p = a; p && !handle->dnsipv6; p = p->ai_next)
+                     if (p->ai_family == AF_INET6)
+                        handle->dnsipv6 = 1;
+                  for (p = a; p; p = p->ai_next)
+                  {
+                     if (p->ai_family == AF_INET && (ip6 || !revk_has_ipv4 ()))
+                        continue;
+                     if (p->ai_family == AF_INET6 && (!ip6 || !revk_has_ipv6 ()))
+                        continue;
+                     handle->sock = socket (p->ai_family, p->ai_socktype, p->ai_protocol);
+                     if (handle->sock < 0)
+                        continue;
+#if 0
+                     {          // Debug that we are trying
+                        char from[INET6_ADDRSTRLEN + 1] = "";
+                        if (p->ai_family == AF_INET)
+                           inet_ntop (p->ai_family, &((struct sockaddr_in *) (p->ai_addr))->sin_addr, from, sizeof (from));
+                        else
+                           inet_ntop (p->ai_family, &((struct sockaddr_in6 *) (p->ai_addr))->sin6_addr, from, sizeof (from));
+                        ESP_LOGE (TAG, "Try connect %s (backoff %d)", from, handle->backoff);
+                     }
+#endif
+                     if (connect (handle->sock, p->ai_addr, p->ai_addrlen))
+                     {
+                        close (handle->sock);
+                        handle->sock = -1;
+                        continue;
+                     }
+                     // Connected
+                     if (ip6)
+                     {          // IPv6 connected
+                        handle->ipv6 = 1;       // Is IPv6
+                        handle->close = 0;      // We only close to force IPv6, so cancel closing
+                     }
+                     break;
+                  }
                }
-               break;
+               if (a)
+                  freeaddrinfo (a);
+               if (handle->sock < 0)
+                  return 0;     // Not  connected
+               return 1;        // Worked
             }
-            freeaddrinfo (a);
-            return 1;
+            tryconnect (1);     // Explicit try IPv6 first
+            tryconnect (0);
          }
-         if (!tryconnect (AF_INET6) || uptime () > 20)  // Gives IPv6 a chance to actually get started if there is IPv6 DNS for this.
-            tryconnect (AF_INET);
-         if (handle->sock < 0)
-            ESP_LOGI (TAG, "Could not connect to %s:%d", hostname, port);
-         else
-            ESP_LOGI (TAG, "Connected %s:%d", hostname, port);
       }
-      free (hostname);
-      if (handle->sock < 0)
+      if (handle->backoff < 10)
+         handle->backoff++;     // 100 seconds max
+      if (!revk_has_ip ())
+         handle->backoff = 0;   // We did not try even
+      else if (handle->sock < 0)
       {                         // Failed before we even start
+         ESP_LOGI (TAG, "Could not connect to %s:%d", hostname, port);
          if (handle->callback)
             handle->callback (handle->arg, NULL, 0, NULL);
       } else
       {
+         ESP_LOGE (TAG, "Connected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          hwrite (handle, handle->connect, handle->connectlen);
          lwmqtt_loop (handle);
+         handle->backoff = 0;
+         handle->dnsipv6 = 0;
+         handle->ipv6 = 0;
       }
-      if (!handle->running)
-         break;                 // client was stopped
-      if (handle->backoff < 10)
-         handle->backoff++;     // 100 seconds max
+      free (hostname);
       // On ESP32 uint32_t, returned by this func, appears to be long, while on ESP8266 it's a pure unsigned int
       // The easiest and least ugly way to get around is to cast to long explicitly
       ESP_LOGI (TAG, "Retry %d (mem:%ld)", handle->backoff, (long) esp_get_free_heap_size ());

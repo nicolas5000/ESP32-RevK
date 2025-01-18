@@ -7,6 +7,8 @@
 #endif
 static const char __attribute__((unused)) * TAG = "Settings";
 
+#include "settings_lib.h"
+
 extern revk_settings_t revk_settings[];
 extern uint32_t revk_nvs_time;
 
@@ -451,11 +453,12 @@ parse_numeric (revk_settings_t * s, void **pp, const char **dp, const char *e)
             return 9 + (c & 0xF);
          return -1;
       }
+      uint8_t count = 0;
       void add (char c)
       {
          uint64_t wrap = v;
          v = v * (s->hex ? 16 : 10) + dig (c);
-         if (!err && v < wrap)
+         if (!err && (v < wrap || (s->digits && ++count > s->digits + s->decimal)))
             err = "Number too large";
       }
       if (d < e && *d == '-')
@@ -595,10 +598,14 @@ text_numeric (revk_settings_t * s, void *p)
                *t++ = '.';
                while (*i)
                   *t++ = *i++;
-            } else if (s->hex)
-               t += sprintf (t, "%llX", val);
-            else
-               t += sprintf (t, "%llu", val);
+            } else if (!s->hex)
+            {
+               if (s->digits)
+                  t += sprintf (t, "%0*llu", s->digits, val);
+               else
+                  t += sprintf (t, "%llu", val);
+            } else
+               t += sprintf (t, "%0*llX", s->digits ? : s->size * 2, val);
          }
       }
       // Suffix
@@ -872,7 +879,7 @@ load_value (revk_settings_t * s, const char *d, int index, void *ptr)
          if (!s->malloc)
          {                      // Fixed
             if (e - d + 1 > s->size)
-               err = "Too long";
+               err = "String too long";
             else
             {
                memcpy (ptr, d, e - d);
@@ -1007,7 +1014,7 @@ revk_settings_load (const char *tag, const char *appname)
                            addzap (NULL, 0);
                      } else
                      {
-#ifdef	CONFIG_REVK_SETTINGS_HAS_OLD
+#ifdef	REVK_SETTINGS_HAS_OLD
                         for (s = revk_settings;
                              s->len && !(s->revk == revk && s->old && !s->array && !strcmp (s->old, info.key)); s++);
                         if (s->len)
@@ -1067,6 +1074,48 @@ revk_settings_load (const char *tag, const char *appname)
             for (int i = 0; i < s->array; i++)
                nvs_put (s, i, NULL);
       }
+}
+
+void
+revk_settings_factory (const char *tag, const char *appname, char full)
+{                               // Factory reset settings
+   ESP_LOGE (tag, "Factory reset");
+   for (int revk = 0; revk < 2; revk++)
+   {
+      nvs_close (nvs[revk]);
+      nvs[revk] = -1;
+   }
+   esp_err_t e = nvs_flash_erase ();
+   if (!e)
+      e = nvs_flash_erase_partition (tag);
+   if (full)
+      return;
+   // Restore fixed settings
+   nvs_flash_init ();
+   ESP_LOGE (tag, "Fixed settings");
+   for (int revk = 0; revk < 2; revk++)
+   {
+      const char *part = revk ? tag : "nvs";
+      const char *ns = revk ? tag : appname;
+      esp_err_t e = nvs_flash_init_partition (part);
+      if (!e)
+         e = nvs_open_from_partition (part, ns, NVS_READWRITE, &nvs[revk]);
+#ifdef  CONFIG_REVK_SETTINGS_DEBUG
+      if (e)
+         ESP_LOGE (TAG, "Open failed %s/%s %s", part, ns, esp_err_to_name (e));
+#endif
+   }
+   for (revk_settings_t * s = revk_settings; s->len; s++)
+      if (s->fix)
+      {                         // Fix, save to flash
+         if (!s->array)
+            nvs_put (s, 0, NULL);
+         else
+            for (int i = 0; i < s->array; i++)
+               nvs_put (s, i, NULL);
+      }
+   revk_settings_commit ();
+   ESP_LOGE (tag, "Reset complete");
 }
 
 const char *
@@ -1193,8 +1242,13 @@ revk_setting_dump (int level)
 #ifdef  REVK_SETTINGS_HAS_JSON
          case REVK_SETTINGS_JSON:
             {
-               jo_t v = jo_parse_str (data);
-               jo_json (p, tag, v);
+               if (!data || !*data)
+                  jo_null (p, tag);
+               else
+               {
+                  jo_t v = jo_parse_str (data);
+                  jo_json (p, tag, v);
+               }
             }
             break;
 #endif
@@ -1208,9 +1262,14 @@ revk_setting_dump (int level)
             if (len)
             {
                char *d = data;
+               if (*d == '0' && !d[1])
+               {                // 0 is only case of leading 0, and must not be -0
+                  jo_lit (p, tag, data);
+                  break;
+               }
                if (*d == '-')
                   d++;
-               if (isdigit ((int) *d))
+               if (isdigit ((int) *d) && *d != '0')
                {
                   while (isdigit ((int) *d))
                      d++;
@@ -1220,11 +1279,12 @@ revk_setting_dump (int level)
                      while (isdigit ((int) *d))
                         d++;
                   }
-               }
-               if (!*d && strcmp (data, "-0"))
-               {
-                  jo_lit (p, tag, data);
-                  break;
+                  // We are not expecting exponents
+                  if (!*d)
+                  {
+                     jo_lit (p, tag, data);
+                     break;
+                  }
                }
             }
             jo_stringn (p, tag, data ? : "", len);
@@ -1357,12 +1417,12 @@ revk_settings_store (jo_t j, const char **locationp, uint8_t flags)
          location = jo_debug (j);
          int l = jo_strlen (j);
          if (l + plen > sizeof (tag) - 1)
-            return "Too long";
+            return "Tag too long";
          jo_strncpy (j, tag + plen, l + 1);
          revk_settings_t *s;
          for (s = revk_settings; s->len && (s->len != plen + l || (plen && s->dot != plen) || strcmp (s->name, tag)); s++);
          const char *store (int index)
-         {
+         {                      // Store simple value from here - does not advance j
             if (!s->len)
             {
                if (index < 0)
@@ -1380,7 +1440,7 @@ revk_settings_store (jo_t j, const char **locationp, uint8_t flags)
                   }
                }
                if (!s->len)
-                  return "Not found index";
+                  return "Not found";
             }
             if (index < 0)
                index = 0;
@@ -1423,7 +1483,10 @@ revk_settings_store (jo_t j, const char **locationp, uint8_t flags)
                   }
                } else
                {
-                  val = jo_strdupj (j); // Raw JSON
+                  if (t == JO_NULL)
+                     val = strdup ("");
+                  else
+                     val = jo_strdupj (j);      // Raw JSON
                   t = JO_STRING;        // Not default
                   err = jo_error (j, NULL);
                   if (err)
@@ -1623,11 +1686,10 @@ revk_settings_store (jo_t j, const char **locationp, uint8_t flags)
                err = store (-1);
          }
 #ifdef  REVK_SETTINGS_HAS_JSON
-         if (s->type == REVK_SETTINGS_JSON)
+         if (!s->array && s->type == REVK_SETTINGS_JSON)
          {
             if ((err = store (pindex)))
                return err;
-            jo_skip (j);        // Skip object
          } else
 #endif
          if (t == JO_NULL)
@@ -1714,10 +1776,12 @@ revk_settings_store (jo_t j, const char **locationp, uint8_t flags)
             else
             {
                int index = 0;
-               while (!err && (t = jo_next (j)) != JO_CLOSE && index < s->array)
+               jo_next (j);
+               while (!err && (t = jo_here (j)) != JO_CLOSE && index < s->array)
                {
                   if ((err = store (index)))
                      return err;
+                  jo_skip (j);  // Whatever value it was
                   index++;
                }
                if (t != JO_CLOSE)

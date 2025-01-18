@@ -40,7 +40,7 @@
 #endif
 
 #ifndef  CONFIG_REVK_OLD_SETTINGS
-#include "../../settings.h"
+#include "../../main/settings.h"
 #endif
 
 #include "revk_ctype.h"
@@ -113,7 +113,7 @@ struct revk_gpio_s
    uint8_t set:1;
 };
 #endif
-int gpio_ok (uint8_t gpio);     // non 0 if OK to use in current platform (bit 0 for out, bit 1 for in, bit 2 for special use - e.g. USB)
+int gpio_ok (int8_t gpio);     // non 0 if OK to use in current platform (bit 0 for out, bit 1 for in, bit 2 for special use - e.g. USB)
 #ifdef	REVK_SETTINGS_HAS_GPIO
 esp_err_t revk_gpio_output (revk_gpio_t g, uint8_t o);
 esp_err_t revk_gpio_set (revk_gpio_t g, uint8_t o);
@@ -194,6 +194,7 @@ int revk_wait_mqtt (int seconds);
 uint32_t revk_link_down (void); // How long link down (no IP or no parent if mesh)
 #define MESH_PAD        32      // Max extra allocated bytes required on data
 const char *revk_wifi (void);   // Return the wifi SSID
+uint8_t revk_wifi_is_ap(void*ssid);	// Return length of stored SSID if in AP mode (allow 32 characters)
 void revk_wifi_close (void);    // Close wifi
 int revk_wait_wifi (int seconds);       // Wait for wifi
 #endif
@@ -207,9 +208,20 @@ void revk_send_subunsub (int client, const mac_t,uint8_t sub);
 #define revk_send_sub(c,m) revk_send_subunsub(c,m,1)
 #define revk_send_unsub(c,m) revk_send_subunsub(c,m,0)
 #endif
-void revk_blink (uint8_t on, uint8_t off, const char *colours); // Set LED blink rate and colour sequence for on state (for RGB LED)
+
+void revk_blink (uint8_t on, uint8_t off, const char *colours); // Set LED blink rate and colour sequence for on state (for RGB LED even if not LED strip)
+uint32_t revk_blinker (void);   // Return colour for blinking status LED (as per revk_rgb) plud top bit for basic blink cycle
+uint32_t revk_rgb (char c);     // Provide RGB colour for character, with scaling, and so on, in bottom 3 bytes. Top byte has 2 bits per colour.
+
+#ifdef  CONFIG_REVK_LED_STRIP
+extern const uint8_t gamma8[256];
+void revk_led (led_strip_handle_t strip, int led, uint8_t scale, uint32_t rgb); // Set LED from RGB with scale and apply gamma
+#endif
+
+#ifdef  CONFIG_REVK_BLINK_SUPPORT
 void revk_blink_init(void);	// Start library blinker
 void revk_blink_do(void);	// Do library blinker (10Hz expected)
+#endif
 
 uint16_t revk_num_web_handlers (void);  // Number of handlers used by revk_web_settings_add()
 const char *revk_web_safe (char **temp, const char *value);     // Return safe version of text for HTML (malloced in *temp)
@@ -218,18 +230,13 @@ jo_t revk_web_query (httpd_req_t * req);        // Get post/get form in JSON for
 esp_err_t revk_web_settings_add (httpd_handle_t webserver);     // Add URLs
 esp_err_t revk_web_settings_remove (httpd_handle_t webserver);  // Remove URLs
 esp_err_t revk_web_settings (httpd_req_t * req);        // Call for web config for SSID/password/mqtt (GET/POST) - needs 4 URLS
+void revk_web_setting_title (httpd_req_t * req, const char *fmt,...); // Text info in settings (th)
+void revk_web_setting_info (httpd_req_t * req, const char *fmt,...); // Text info in settings
 void revk_web_setting (httpd_req_t * req, const char *tag, const char *field);
 esp_err_t revk_web_status (httpd_req_t * req);  // Call for web config for SSID/password/mqtt (WS)
 esp_err_t revk_web_wifilist (httpd_req_t * req);        // WS for list of SSIDs
 void revk_web_head (httpd_req_t * req, const char *title);      // Generic html heading
 esp_err_t revk_web_foot (httpd_req_t * req, uint8_t home, uint8_t wifi, const char *extra);     // Generic html footing and return
-
-uint32_t revk_blinker (void);   // Return colour for blinking LED (as per revk_rgb) plug top bit for basic blink cycle
-#ifdef  CONFIG_REVK_LED_STRIP
-extern const uint8_t gamma8[256];
-uint32_t revk_rgb (char c);     // Provide RGB colour for character, with scaling, and so on, in bottom 3 bytes. Top byte has 2 bits per colour.
-void revk_led (led_strip_handle_t strip, int led, uint8_t scale, uint32_t rgb); // Set LED from RGB with scale and apply gamma
-#endif
 
 #ifdef	CONFIG_REVK_SEASON
 const char *revk_season (time_t now);   // Return a character for seasonal variation, E=Easter, Y=NewYear, X=Christmas, H=Halloween
@@ -253,11 +260,17 @@ time_t sun_set (int y, int m, int d, double latitude, double longitude, double s
 #define SUN_ASTRONOMICAL_TWILIGHT       (-18.0)
 #endif
 
+void revk_enable_upgrade (void);
+void revk_disable_upgrade (void);
 void revk_enable_wifi (void);
 void revk_disable_wifi (void);
 void revk_enable_ap (void);
 void revk_disable_ap (void);
 void revk_enable_settings (void);
 void revk_disable_settings (void);
+
+uint8_t revk_has_ip(void);
+uint8_t revk_has_ipv4(void);
+uint8_t revk_has_ipv6(void);
 
 #endif

@@ -139,6 +139,7 @@ const char revk_build_suffix[] = CONFIG_REVK_BUILD_SUFFIX;
 
 #define	wifisettings	\
 		u16(wifireset,CONFIG_REVK_WIFIRESET);	\
+		u16(wifiuptime,0);	\
 		s(wifissid,CONFIG_REVK_WIFISSID);	\
 		s(wifiip,CONFIG_REVK_WIFIIP);		\
 		s(wifigw,CONFIG_REVK_WIFIGW);		\
@@ -238,7 +239,10 @@ const char *revk_app = "";      /* App name */
 char revk_id[13] = "";          /* Chip ID as hex (from MAC) */
 uint64_t revk_binid = 0;        /* Binary chip ID */
 mac_t revk_mac;                 // MAC
+
 static int8_t ota_percent = -1;
+
+static uint8_t gotip = 0;       // Avoid double reporting - bit 7 is IPv4, bits 0-6 are ipv6 index - bit 0 is normally link local
 
 static int
 ota_in_progress (void)
@@ -253,14 +257,20 @@ led_strip_handle_t revk_strip = NULL;
 /* Local */
 static struct
 {                               // Flags
+   uint8_t die:1;               // Final die
+   uint8_t gotipv6:1;           // Just got an IPv6
    uint8_t setting_dump_requested:2;
    uint8_t wdt_test:1;
+   uint8_t disableupgrade:1;
    uint8_t disablewifi:1;
    uint8_t disableap:1;
    uint8_t disablesettings:1;
 #ifdef	CONFIG_REVK_MESH
    uint8_t mesh_root_known:1;
 #endif
+   uint8_t factorywas:1;
+   uint8_t factorycount:2;
+   uint8_t factorytick:5;
 } volatile b = { 0 };
 
 static uint32_t up_next;        // next up report (uptime)
@@ -944,10 +954,12 @@ revk_send_subunsub (int client, const mac_t mac, uint8_t sub)
       send (prefixapp ? "*" : appname); // All apps
       if (*hostname && strcmp (hostname, id))
          send (hostname);       // Hostname as well as MAC
+#ifndef  CONFIG_REVK_OLD_SETTINGS
       if (prefix == topiccommand)
          for (int i = 0; i < sizeof (topicgroup) / sizeof (*topicgroup); i++)
             if (*topicgroup[i])
                send (topicgroup[i]);
+#endif
    }
    subunsub (topiccommand);
    if (!client)
@@ -988,9 +1000,10 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
             p++;
       }
       void getapp (void)
-      {
-         if (!prefixapp || !*p)
-            return;             // Not doing app prefix
+      {                         // Get app, only if app expected and correct
+         int l = strlen (appname);
+         if (!prefixapp || strncmp (p, appname, l) || (p[l] && p[l] != '/'))
+            return;             // Not a expected, or correct, app prefix
          apppart = p;
          while (*p && *p != '/')
             p++;
@@ -1099,15 +1112,17 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
       const char *location = NULL;
       if (!err)
       {
-         if (target && (!apppart || !strcmp (apppart, appname)))
+         if (target && (!prefixapp || apppart))
          {
             if (!strcmp (target, prefixapp ? "*" : appname) || !strcmp (target, revk_id)
                 || (*hostname && !strcmp (target, hostname)))
                target = NULL;   // Mark as us for simple testing by app_command, etc
+#ifndef  CONFIG_REVK_OLD_SETTINGS
             else
                for (int i = 0; target && i < sizeof (topicgroup) / sizeof (*topicgroup); i++)
                   if (*topicgroup[i] && !strcmp (target, topicgroup[i]))
                      target = NULL;     // Mark as us for simple testing by app_command, etc
+#endif
          }
          if (!client && prefix && !strcmp (prefix, topiccommand) && suffix && !strcmp (suffix, "upgrade"))
             err = (err ? : revk_upgrade (target, j));   // Special case as command can be to other host
@@ -1281,7 +1296,8 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
          if (app_callback)
          {
             jo_t j = jo_create_alloc ();
-            jo_string (j, "ssid", apssid);
+            if (*apssid)
+               jo_string (j, "ssid", apssid);   // TODO the generated SSID, is this not in the event?
             jo_rewind (j);
             app_callback (0, topiccommand, NULL, "ap", j);
             jo_free (&j);
@@ -1348,6 +1364,10 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
          break;
       case WIFI_EVENT_STA_CONNECTED:
          ESP_LOGI (TAG, "WiFi STA Connected");
+#ifdef	CONFIG_LWIP_IPV6
+         if (sta_netif)
+            esp_netif_create_ip6_linklocal (sta_netif);
+#endif
          break;
       case WIFI_EVENT_STA_DISCONNECTED:
          ESP_LOGI (TAG, "WiFi STA Disconnect");
@@ -1373,7 +1393,6 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
          break;
       }
    }
-   static uint8_t gotip = 0;    // Avoid double reporting - bit 7 is IPv4, bits 0-6 are ipv6 index
    if (event_base == IP_EVENT)
    {
       switch (event_id)
@@ -1401,8 +1420,8 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
             {                   // New IPv4
                wifi_ap_record_t ap = { };
                REVK_ERR_CHECK (esp_wifi_sta_get_ap_info (&ap));
-               ESP_LOGI (TAG, "Got IP " IPSTR " from %s", IP2STR (&event->ip_info.ip), (char *) ap.ssid);
-               xEventGroupSetBits (revk_group, GROUP_IP);
+               // Done as Error level as really useful if logging at all
+               ESP_LOGE (TAG, "Got IPv4 " IPSTR " from %s", IP2STR (&event->ip_info.ip), (char *) ap.ssid);
                if (sta_netif)
                {
 #if     ESP_IDF_VERSION_MAJOR > 5 || ESP_IDF_VERSION_MAJOR == 5 && ESP_IDF_VERSION_MINOR > 0
@@ -1435,6 +1454,7 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
 #endif
                gotip |= 0x80;   // Got the IPv4
             }
+            xEventGroupSetBits (revk_group, GROUP_IP);
          }
          break;
       case IP_EVENT_GOT_IP6:
@@ -1447,7 +1467,10 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
 #endif
             if (ip_index < 7 && !(gotip & (1 << ip_index)))
             {                   // New IPv6
-               ESP_LOGI (TAG, "Got IPv6 [%d] " IPV6STR " (%d)", ip_index, IPV62STR (event->ip6_info.ip), event->ip6_info.ip.zone);
+               // Done as Error level as really useful if logging at all
+               ESP_LOGE (TAG, "Got IPv6 [%d] " IPV6STR " (%d)", ip_index, IPV62STR (event->ip6_info.ip), event->ip6_info.ip.zone);
+               if (!event->ip6_info.ip.zone)
+                  b.gotipv6 = 1;
 #ifdef  CONFIG_REVK_WIFI
                if (app_callback)
                {
@@ -1649,7 +1672,7 @@ blink_default (const char *user)
       return "MW";              // No WiFi
    if (revk_link_down ())
       return "YW";              // Link down
-   if (user)
+   if (user || dark)
       return "K";
    return "RYGCBM";             // Idle
 }
@@ -1717,12 +1740,19 @@ revk_led (led_strip_handle_t strip, int led, uint8_t scale, uint32_t rgb)
 }
 #endif
 
-#ifdef  CONFIG_REVK_BLINK_SUPPORT
 uint32_t
 revk_blinker (void)
 {                               // LED blinking controls, in style of revk_rgb() but bit 30 is set if not black, and bit 31 is set for blink cycle
+   if (b.die)
+      return 0;
    if (uptime () < 2)
       return 0x4C00FF00;        // Green startup
+   if (b.factorycount == 1)
+      return 0x7CFFFF00;        // Factory reset
+   if (b.factorycount == 2)
+      return 0x48FF8800;        // Factory reset
+   if (b.factorycount == 3)
+      return 0x70FF0000;        // Factory reset
    static uint32_t rgb = 0;     // Current colour (2 bits per)
    static uint8_t tick = 255;   // Blink cycle counter
    uint8_t on = blink_on,       // Current on/off times
@@ -1759,7 +1789,6 @@ revk_blinker (void)
          (scale * (rgb & 0xFF) / 255);
    }
 }
-#endif
 
 #ifdef	CONFIG_REVK_BLINK_SUPPORT
 void
@@ -1777,7 +1806,11 @@ revk_blink_init (void)
          led_strip_config_t strip_config = {
             .strip_gpio_num = (blink[0].num),
             .max_leds = 1,      // The number of LEDs in the strip,
-            .led_pixel_format = LED_PIXEL_FORMAT_GRB,   // Pixel format of your LED strip
+#ifdef	LED_STRIP_COLOR_COMPONENT_FMT_GRB
+            .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
+#else
+            .led_pixel_format = LED_PIXEL_FORMAT_GRB,
+#endif
             .led_model = LED_MODEL_WS2812,      // LED strip model
             .flags.invert_out = blink[0].invert,        // whether to invert the output signal (useful when your hardware has a level inverter)
          };
@@ -1824,7 +1857,7 @@ revk_blink_do (void)
          revk_gpio_set (blink[2], (rgb >> 25) & 1);
       }
 #ifdef  CONFIG_REVK_LED_STRIP
-      else
+      else if (revk_strip)
       {
          revk_led (revk_strip, 0, 255, rgb);
          led_strip_refresh (revk_strip);
@@ -1855,6 +1888,7 @@ task (void *pvParameters)
 #ifdef	CONFIG_REVK_BLINK_LIB
    revk_blink_init ();
 #endif
+   revk_gpio_input (factorygpio);
    while (1)
    {                            /* Idle */
       if (!b.wdt_test && watchdogtime)
@@ -1875,13 +1909,43 @@ task (void *pvParameters)
             revk_setting_dump (b.setting_dump_requested);
             b.setting_dump_requested = 0;
          }
+         if (factorygpio.set)
+         {                      // Factory reset control - press 3 times without a 3 second gap
+            uint8_t press = revk_gpio_get (factorygpio);
+            if (press && !b.factorywas)
+            {
+               if (b.factorycount < 3)
+                  b.factorycount++;
+               ESP_LOGE (TAG, "Pressed factory reset button %d", b.factorycount);
+               b.factorytick = 0;
+               if (b.factorycount == 3)
+               {                // Do factory reset
+                  const esp_app_desc_t *app = esp_app_get_description ();
+                  revk_settings_factory (TAG, app->project_name, 0);
+                  revk_restart (3, "Factory reset");
+               }
+            }
+            b.factorywas = press;
+            if (b.factorytick == 30)
+               b.factorycount = 0;      // Timeout
+            if (b.factorytick < 31)
+               b.factorytick++;
+         }
       }
       static uint32_t last = 0;
       uint32_t now = uptime ();
       if (now != last)
       {                         // Slow (once a second)
          last = now;
-         if (otaauto && ota_check && ota_check < now)
+         if (b.gotipv6)
+         {                      // Stuff that may be useful when we get an IPv6 address
+            b.gotipv6 = 0;
+#ifdef	CONFIG_REVK_MQTT
+            for (int i = 0; i < CONFIG_REVK_MQTT_CLIENTS; i++)
+               lwmqtt_reconnect6 (mqtt_client[i]);
+#endif
+         }
+         if (!b.disableupgrade && otaauto && ota_check && ota_check < now)
          {                      // Check for s/w update
             time_t t = time (0);
             struct tm tm = { 0 };
@@ -1930,9 +1994,11 @@ task (void *pvParameters)
 #endif
             {
 #ifdef	CONFIG_REVK_MQTT
-               sprintf (mq, " MQTT %lu", lwmqtt_connected (mqtt_client[0]));
+               // on ESP8266 uint32_t is just unsigned int, need to explicitly
+               // cast to unsigne long to avoid compiler errors
+               sprintf (mq, " MQTT %lu", (unsigned long) lwmqtt_connected (mqtt_client[0]));
 #if	    CONFIG_REVK_MQTT_CLIENTS>1
-               sprintf (mq + strlen (mq), "/%lu", lwmqtt_connected (mqtt_client[1]));
+               sprintf (mq + strlen (mq), "/%lu", (unsigned long) lwmqtt_connected (mqtt_client[1]));
 #endif
 #endif
             }
@@ -2075,7 +2141,7 @@ task (void *pvParameters)
 #endif
          }
 #ifdef	CONFIG_REVK_APMODE
-         if (!b.disableap && apgpio.set && (gpio_get_level (apgpio.num) ^ apgpio.invert))
+         if (!b.disableap && apgpio.set && revk_gpio_get (apgpio))
          {
             ap_start ();
             if (aptime)
@@ -2098,17 +2164,20 @@ task (void *pvParameters)
             revk_nvs_time = 0;
          }
          if (restart_time && restart_time <= now)
-         {
-            revk_pre_shutdown ();
-            esp_restart ();
-         }
+            break;
       }
    }
+   revk_pre_shutdown ();
+   esp_restart ();
 }
 
 void
 revk_pre_shutdown (void)
 {                               /* Restart */
+   b.die = 1;
+#ifdef CONFIG_REVK_BLINK_LIB
+   revk_blink_do ();
+#endif
    if (!restart_reason)
       restart_reason = "Unknown";
    ESP_LOGI (TAG, "Restart %s", restart_reason);
@@ -2130,8 +2199,10 @@ revk_pre_shutdown (void)
 }
 
 int
-gpio_ok (uint8_t p)
+gpio_ok (int8_t p)
 {                               // Return is bit 0 (i.e. value 1) for output OK, 1 (i.e. value 2) for input OK. bit 2 USB (not marked in/out), bit 3 for Serial (are marked in/out as well)
+   if (!GPIO_IS_VALID_GPIO (p))
+      return 0;                 // Catch all
    // ESP32 (S1)
 #ifdef	CONFIG_IDF_TARGET_ESP32
    if (p > 39)
@@ -2176,6 +2247,16 @@ gpio_ok (uint8_t p)
 #endif
    if (p == 43 || p == 44)
       return 3 + 8;             // Serial
+   return 3;                    // All input and output
+#endif
+   // ESP32 (C3)
+#ifdef	CONFIG_IDF_TARGET_ESP32C3
+   if (p > 21)
+      return 0;
+   if (p == 18 || p == 19)
+      return 4;                 // special use (USB)
+   if (p >= 12 && p <= 17)
+      return 0;
    return 3;                    // All input and output
 #endif
    // ESP8266
@@ -2735,6 +2816,7 @@ revk_restart (int delay, const char *fmt, ...)
       {
          jo_t j = jo_create_alloc ();
          jo_string (j, NULL, reason);
+         jo_int (j, "delay", delay);
          jo_rewind (j);
          app_callback (0, topiccommand, NULL, "restart", j);
          jo_free (&j);
@@ -3038,6 +3120,34 @@ get_status_text (void)
 
 #ifndef  CONFIG_REVK_OLD_SETTINGS
 void
+revk_web_setting_title (httpd_req_t * req, const char *fmt, ...)
+{
+   char *info = NULL;
+   va_list ap;
+   va_start (ap, fmt);
+   vasprintf (&info, fmt, ap);
+   va_end (ap);
+   revk_web_send (req, "<tr><th align=left colspan=3>%s</th></tr>", info);
+   free (info);
+}
+#endif
+
+#ifndef  CONFIG_REVK_OLD_SETTINGS
+void
+revk_web_setting_info (httpd_req_t * req, const char *fmt, ...)
+{
+   char *info = NULL;
+   va_list ap;
+   va_start (ap, fmt);
+   vasprintf (&info, fmt, ap);
+   va_end (ap);
+   revk_web_send (req, "<tr><td colspan=3>%s</th></tr>", info);
+   free (info);
+}
+#endif
+
+#ifndef  CONFIG_REVK_OLD_SETTINGS
+void
 revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
 {
    int index = 0;
@@ -3052,8 +3162,15 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
    char *value = revk_settings_text (s, index, &len);
    if (!value)
       value = strdup ("");
-   if (s->hex || s->base32 || s->base64)
-   {
+   if (((s->hex || s->base32 || s->base64) && !(0
+#ifdef  REVK_SETTINGS_HAS_SIGNED
+                                                || s->type == REVK_SETTINGS_SIGNED
+#endif
+#ifdef  REVK_SETTINGS_HAS_UNSIGNED
+                                                || s->type == REVK_SETTINGS_UNSIGNED
+#endif
+        )))
+   {                            // Expand block to base coded
       const char *alphabet = s->base64 ? JO_BASE64 : s->base32 ? JO_BASE32 : JO_BASE16;
       uint8_t bits = s->base64 ? 6 : s->base32 ? 5 : 4;
       uint32_t dlen = (len * 8 + bits - 1) / bits + 1;
@@ -3140,11 +3257,24 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
        || s->type == REVK_SETTINGS_UNSIGNED
 #endif
       )
-      // Numeric
-      revk_web_send (req,
-                     "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' size=10 autocorrect='off' placeholder=\"%s\" style=\"text-align:right\">%s</td><td>%s</td></tr>",
-                     field, field, field, revk_web_safe (&qs, value), place, s->gpio ? " (GPIO)" : "", comment);
-   else
+   {                            // Numeric
+      if (s->hex)
+         revk_web_send (req,
+                        "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' autocorrect='off' placeholder=\"%s\" style=\"font-family:monospace\" size=%d maxlength=%d>%s</td><td>%s</td></tr>",
+                        field, field, field, revk_web_safe (&qs, value), place, s->size * 2, s->size * 2, s->gpio ? " (GPIO)" :
+#ifdef	REVK_SETTINGS_HAS_UNIT
+                        s->unit ? :
+#endif
+                        "", comment);
+      else
+         revk_web_send (req,
+                        "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' autocorrect='off' placeholder=\"%s\" style=\"text-align:right\" size=10>%s</td><td>%s</td></tr>",
+                        field, field, field, revk_web_safe (&qs, value), place, s->gpio ? " (GPIO)" :
+#ifdef	REVK_SETTINGS_HAS_UNIT
+                        s->unit ? :
+#endif
+                        "", comment);
+   } else
 #endif
 #ifdef  REVK_SETTINGS_HAS_JSON
    if (s->type == REVK_SETTINGS_JSON)
@@ -3153,8 +3283,15 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
                      field, field, field, *place ? place : "JSON", revk_web_safe (&qs, value), comment);
    else
 #endif
-#ifdef  REVK_SETTINGS_HAS_BLOB
-   if (s->type == REVK_SETTINGS_BLOB && (s->base64 || s->base32 || s->hex))
+#if defined(REVK_SETTINGS_HAS_BLOB) || defined(REVK_SETTINGS_HAS_OCTET)
+      if ((0
+#ifdef REVK_SETTINGS_HAS_OCTET
+           || (s->type == REVK_SETTINGS_OCTET && s->size > 32)
+#endif
+#ifdef REVK_SETTINGS_HAS_BLOB
+           || s->type == REVK_SETTINGS_BLOB
+#endif
+          ) && (s->base64 || s->base32 || s->hex))
       revk_web_send (req,
                      "<td nowrap><textarea style=\"font-family:monospace\" cols=40 rows=4 id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" autocapitalize='off' autocomplete='off' spellcheck='false' size=40 autocorrect='off' placeholder=\"%s\">%s</textarea></td><td>%s</td></tr>",
                      field, field, field, *place ? place : s->base64 ? "Base64" : s->base32 ? "Base32" : "Hex", revk_web_safe (&qs,
@@ -3164,7 +3301,9 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
 #endif
    if (s->type == REVK_SETTINGS_STRING || s->base64 || s->base32 || s->hex)
    {
-      int w = s->size - 1;
+      int w = s->size;
+      if (w)
+         w--;                   // Includes null
       if (s->hex)
          w *= 2;
       if (s->base32)
@@ -3608,6 +3747,16 @@ revk_web_settings (httpd_req_t * req)
             dns (ESP_NETIF_DNS_BACKUP);
             dns (ESP_NETIF_DNS_FALLBACK);
          }
+         wifi_ap_record_t ap = {
+         };
+         esp_wifi_sta_get_ap_info (&ap);
+         revk_web_send (req, "<tr><td>SSID</td><td>%s</td></tr>", (char *) ap.ssid);
+         revk_web_send (req, "<tr><td>BSSID</td><td>%02X%02X%02X%02X%02X%02X</td></tr>", (uint8_t) ap.bssid[0],
+                        (uint8_t) ap.bssid[1], (uint8_t) ap.bssid[2], (uint8_t) ap.bssid[3], (uint8_t) ap.bssid[4],
+                        (uint8_t) ap.bssid[5]);
+         revk_web_send (req, "<tr><td>RSSI</td><td>%d</td></tr>", ap.rssi);
+         revk_web_send (req, "<tr><td>Channel</td><td>%d</td></tr>", ap.primary);
+         // TODO authmode
       }
       revk_web_send (req, "</table>");
    }
@@ -3845,6 +3994,35 @@ dummy_dns_task (void *pvParameters)
 #endif
 
 #ifdef	CONFIG_REVK_APMODE
+static int
+make_ap_name (void *ssid)
+{                               // Sets AP name if in AP mode, returns length, ssid has to allow 32 characters
+   if (!ssid)
+      return 0;
+   int l = 0;
+   if (*apssid)
+      l = snprintf (ssid, 32, "%s", apssid);
+   else
+#ifdef	CONFIG_REVK_APDNS
+      l = snprintf (ssid, 32, "%s-%012llX", appname, revk_binid);
+#else
+      l = snprintf (ssid, 32, "%s-10.%d.%d.1", appname, (uint8_t) (revk_binid >> 8), (uint8_t) (revk_binid & 255));
+#endif
+   if (l > 32)
+      l = 32;
+   return l;
+}
+
+uint8_t
+revk_wifi_is_ap (void *ssid)
+{                               // Set SSID, and return length if in AP mode, else 0
+   wifi_mode_t mode = 0;
+   esp_wifi_get_mode (&mode);
+   if (mode != WIFI_MODE_AP && mode != WIFI_MODE_APSTA)
+      return 0;
+   return make_ap_name (ssid);
+}
+
 static void
 ap_start (void)
 {
@@ -3860,15 +4038,7 @@ ap_start (void)
    // WiFi
    wifi_config_t cfg = { 0, };
    cfg.ap.max_connection = 2;   // We expect only one really, this is for config
-#ifdef	CONFIG_REVK_APDNS
-   cfg.ap.ssid_len = snprintf ((char *) cfg.ap.ssid, sizeof (cfg.ap.ssid), "%s-%012llX", appname, revk_binid);
-#else
-   cfg.ap.ssid_len =
-      snprintf ((char *) cfg.ap.ssid, sizeof (cfg.ap.ssid), "%s-10.%d.%d.1", appname,
-                (uint8_t) (revk_binid >> 8), (uint8_t) (revk_binid & 255));
-#endif
-   if (cfg.ap.ssid_len > sizeof (cfg.ap.ssid))
-      cfg.ap.ssid_len = sizeof (cfg.ap.ssid);
+   cfg.ap.ssid_len = make_ap_name (cfg.ap.ssid);
    if (*appass)
    {
       int l;
@@ -4319,7 +4489,7 @@ revk_command (const char *tag, jo_t j)
    }
    if (!e && !strcmp (tag, "restart"))
       e = revk_restart (3, "Restart command");
-   if (!e && !strcmp (tag, "factory"))
+   if (!e && (!strcmp (tag, "factory") || !strcmp (tag, "fullfactory")))
    {
       char val[256];
       if (jo_strncpy (j, val, sizeof (val)) < 0)
@@ -4328,11 +4498,9 @@ revk_command (const char *tag, jo_t j)
          return "Bad ID";
       if (strcmp (val + strlen (revk_id), appname))
          return "Bad appname";
-      esp_err_t e = nvs_flash_erase ();
-      if (!e)
-         e = nvs_flash_erase_partition (TAG);
-      if (!e)
-         revk_restart (3, "Factory reset");
+      const esp_app_desc_t *app = esp_app_get_description ();
+      revk_settings_factory (TAG, app->project_name, tag[1] == 'u');
+      revk_restart (3, "Factory reset");
       return "";
    }
 #ifdef	CONFIG_REVK_MESH
@@ -4890,6 +5058,24 @@ revk_moon_full_next (time_t t)
 
 #endif
 
+uint8_t
+revk_has_ip (void)
+{
+   return gotip;
+}
+
+uint8_t
+revk_has_ipv4 (void)
+{
+   return gotip & 0x80;
+}
+
+uint8_t
+revk_has_ipv6 (void)
+{
+   return gotip & 0x7E;         // bit 0 is link local
+}
+
 void
 revk_enable_wifi (void)
 {
@@ -4903,6 +5089,18 @@ revk_enable_wifi (void)
 #endif
       b.disablewifi = 0;
    }
+}
+
+void
+revk_disable_upgrade (void)
+{
+   b.disableupgrade = 1;
+}
+
+void
+revk_enable_upgrade (void)
+{
+   b.disableupgrade = 0;
 }
 
 void
@@ -4951,8 +5149,10 @@ revk_gpio_output (revk_gpio_t g, uint8_t o)
    esp_err_t e = 0;
    if (!g.set || !GPIO_IS_VALID_OUTPUT_GPIO (g.num))
       e = ESP_FAIL;
+#ifndef	CONFIG_IDF_TARGET_ESP32C3
    if (!e && rtc_gpio_is_valid_gpio (g.num))
       e = rtc_gpio_deinit (g.num);
+#endif
    if (!e)
       e = gpio_reset_pin (g.num);
    if (!e)
@@ -4962,13 +5162,15 @@ revk_gpio_output (revk_gpio_t g, uint8_t o)
       e = gpio_set_direction (g.num, g.pulldown ? GPIO_MODE_OUTPUT_OD : GPIO_MODE_OUTPUT);
    if (!e)
       e = gpio_set_drive_capability (g.num, 2 + g.strong - g.weak * 2);
-   if (rtc_gpio_is_valid_gpio (g.num))
+#ifndef	CONFIG_IDF_TARGET_ESP32C3
+   if (!e && rtc_gpio_is_valid_gpio (g.num))
    {
       if (!e)
          e = rtc_gpio_set_direction (g.num, g.pulldown ? RTC_GPIO_MODE_OUTPUT_OD : RTC_GPIO_MODE_OUTPUT_ONLY);
       if (!e)
          e = rtc_gpio_set_drive_capability (g.num, 2 + g.strong - g.weak * 2);
    }
+#endif
 #else
    if (!e)
       e = gpio_set_direction (g.num, GPIO_MODE_OUTPUT);
@@ -4979,7 +5181,7 @@ revk_gpio_output (revk_gpio_t g, uint8_t o)
 esp_err_t
 revk_gpio_set (revk_gpio_t g, uint8_t o)
 {
-   if (!g.set)
+   if (!g.set || !GPIO_IS_VALID_OUTPUT_GPIO (g.num))
       return ESP_FAIL;
    return gpio_set_level (g.num, (o ? 1 : 0) ^ g.invert);
 }
@@ -4990,11 +5192,10 @@ revk_gpio_input (revk_gpio_t g)
    esp_err_t e = 0;
    if (!g.set || !GPIO_IS_VALID_GPIO (g.num))
       e = ESP_FAIL;
-   if (rtc_gpio_is_valid_gpio (g.num))
-   {
-      if (!e)
-         e = rtc_gpio_deinit (g.num);
-   }
+#ifndef	CONFIG_IDF_TARGET_ESP32C3
+   if (!e && rtc_gpio_is_valid_gpio (g.num))
+      e = rtc_gpio_deinit (g.num);
+#endif
    if (!e)
       e = gpio_reset_pin (g.num);
    if (!e)
@@ -5018,6 +5219,7 @@ revk_gpio_input (revk_gpio_t g)
       if (!e)
          e = gpio_pulldown_dis (g.num);
    }
+#ifndef CONFIG_IDF_TARGET_ESP32C3
    if (rtc_gpio_is_valid_gpio (g.num))
    {
       if (!g.pulldown && !g.nopull)
@@ -5040,13 +5242,14 @@ revk_gpio_input (revk_gpio_t g)
       }
    }
 #endif
-   return 0;
+#endif
+   return e;
 }
 
 uint8_t
 revk_gpio_get (revk_gpio_t g)
 {
-   if (g.set)
+   if (g.set && GPIO_IS_VALID_GPIO (g.num))
       return gpio_get_level (g.num) ^ g.invert;
    return 0;
 }

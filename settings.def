@@ -5,7 +5,7 @@ s	hostname				.revk=1 .hide=1			// Host name
 // Appname is not something you should changing usually so leave as MQTT only
 s	appname		CONFIG_REVK_APPNAME	.revk=1 .hide=1		// Application name
 
-s	ota.host	CONFIG_REVK_OTAHOST	.revk=1			// OTA hostname
+s	ota.host	CONFIG_REVK_OTAHOST	.revk=1	.live=1		// OTA hostname
 u8	ota.days	CONFIG_REVK_OTADAYS	.revk=1			// OTA auto load (days)
 u16	ota.start	600			.revk=1			// OTA check after startup (min seconds)
 bit	ota.auto	1			.revk=1	.hide=1 .live=1	// OTA auto upgrade
@@ -21,10 +21,18 @@ s	topic.state	state			.revk=1 .old="prefixstate"			// MQTT Topic for state
 s	topic.event	event			.revk=1 .old="prefixevent"			// MQTT Topic for event
 s	topic.info	info			.revk=1 .old="prefixinfo"			// MQTT Topic for info
 s	topic.error	error			.revk=1 .old="prefixerror"			// MQTT Topic for error
+s	topic.ha	homeassistant		.revk=1						// MQTT Topic for homeassistant
 bit	prefix.app	CONFIG_REVK_PREFIXAPP	.revk=1			// MQTT use appname/ in front of hostname in topic
 bit	prefix.host	CONFIG_REVK_PREFIXHOST	.revk=1			// MQTT use (appname/)hostname/topic instead of topic/(appname/)hostname
 #ifdef	CONFIG_REVK_BLINK_DEF
 gpio	blink		CONFIG_REVK_BLINK	.revk=1	.array=3	// R, G, B LED array (set all the same for WS2812 LED)
+#endif
+
+bit	dark					.revk=1 .live=1			// Default LED off
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+gpio	factorygpio	-21			.revk=1			// Factory reset GPIO (press 3 times)
+#else
+gpio	factorygpio				.revk=1			// Factory reset GPIO (press 3 times)
 #endif
 
 

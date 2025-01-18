@@ -120,8 +120,8 @@ main (int argc, const char *argv[])
    int debug = 0;
    int nocomment = 0;
    int noplace = 0;
-   const char *cfile = "settings.c";
-   const char *hfile = "settings.h";
+   const char *cfile = "main/settings.c";
+   const char *hfile = "main/settings.h";
    const char *dummysecret = "✶✶✶✶✶✶✶✶";
    const char *extension = "def";
    int maxname = 15;
@@ -382,6 +382,7 @@ main (int argc, const char *argv[])
       char hasjson = 0;
       char hasgpio = 0;
       char hasold = 0;
+      char hasunit = 0;
       char hascomment = 0;
       char hasplace = 0;
 
@@ -402,6 +403,10 @@ main (int argc, const char *argv[])
       for (d = defs; d && (!d->attributes || !strstr (d->attributes, ".old=")); d = d->next);
       if (d)
          hasold = 1;
+
+      for (d = defs; d && (!d->attributes || !strstr (d->attributes, ".unit=")); d = d->next);
+      if (d)
+         hasunit = 1;
 
       for (d = defs; d && (!d->type || *d->type != 'o' || !is_digit (d->type[1])); d = d->next);
       if (d)
@@ -445,6 +450,8 @@ main (int argc, const char *argv[])
                " const char *flags;\n", maxname + 1);
       if (hasold)
          fprintf (H, " const char *old;\n");
+      if (hasunit)
+         fprintf (H, " const char *unit;\n");
       if (hascomment)
          fprintf (H, " const char *comment;\n");
       if (hasplace)
@@ -456,6 +463,7 @@ main (int argc, const char *argv[])
                " uint8_t len:4;\n"      //
                " uint8_t type:3;\n"     //
                " uint8_t decimal:5;\n"  //
+               " uint8_t digits:5;\n"   //
                " uint8_t array:7;\n"    //
                " uint8_t malloc:1;\n"   //
                " uint8_t revk:1;\n"     //
@@ -565,6 +573,8 @@ main (int argc, const char *argv[])
       fprintf (H, "};\n");
       if (hasold)
          fprintf (H, "#define	REVK_SETTINGS_HAS_OLD\n");
+      if (hasunit)
+         fprintf (H, "#define	REVK_SETTINGS_HAS_UNIT\n");
       if (hascomment)
          fprintf (H, "#define	REVK_SETTINGS_HAS_COMMENT\n");
       if (hasplace)
@@ -599,18 +609,20 @@ main (int argc, const char *argv[])
          {
             count++;
             fprintf (C, " {");
-            if (d->attributes && !(*d->type == 's' || *d->type == 'u') && is_digit (d->type[1]))
+            if (d->attributes && !(*d->type == 's' || *d->type == 'u' || *d->type == 'o') && is_digit (d->type[1]))
             {                   // non numeric
                if (strstr (d->attributes, ".set=1"))
-                  errx (1, ".set on no numeric for %s in %s", d->name, d->type);
+                  errx (1, ".set on non numeric for %s in %s", d->name, d->type);
                if (strstr (d->attributes, ".flags="))
-                  errx (1, ".flags on no numeric for %s in %s", d->name, d->type);
+                  errx (1, ".flags on non numeric for %s in %s", d->name, d->type);
                if (strstr (d->attributes, ".base64=1"))
-                  errx (1, ".base64 on no numeric for %s in %s", d->name, d->type);
+                  errx (1, ".base64 on non numeric for %s in %s", d->name, d->type);
                if (strstr (d->attributes, ".base32=1"))
-                  errx (1, ".base32 on no numeric for %s in %s", d->name, d->type);
+                  errx (1, ".base32 on non numeric for %s in %s", d->name, d->type);
+               if (strstr (d->attributes, ".digits="))
+                  errx (1, ".digits on non numeric for %s in %s", d->name, d->type);
                if (strstr (d->attributes, ".decimal=") && strstr (d->attributes, ".hex=1"))
-                  errx (1, ".hex and .decimal on no numeric for %s in %s", d->name, d->type);
+                  errx (1, ".hex and .decimal on non numeric for %s in %s", d->name, d->type);
             }
             if (*d->type == 's' && is_digit (d->type[1]))
                fprintf (C, ".type=REVK_SETTINGS_SIGNED");

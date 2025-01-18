@@ -56,66 +56,13 @@ The `app_callback` is also called for a number of internal functions.
 |`shutdown`|Just before shutting down|
 |`mesh`|Mesh message received|
 
+### Seasons
+
+See [Season codes](Seasonal.md).
+
 ### Settings
 
-**This is the OLD deprecated settings code, enabled with `CONFIG_OLD_SETTINGS`, see [New settings system](revk-settings.md)**
-
-Between `revk_boot` and `revk_start` you should add necessary calls to `revk_register(...)` to add any settings you need.
-```
-  void revk_register(const char *name,    // Setting name (note max 15 characters inc any number suffix)
-                     uint8_t array,       // If non zero then settings are suffixed numerically 1 to array
-                     uint16_t size,       // Base setting size, -8/-4/-2/-1 signed, 1/2/4/8 unsigned, 0=null terminated string.
-                     void *data,  // The setting itself (for string this points to a char* pointer)
-                     const char *defval,  // default value (default value text, or bitmask[space]default)
-                     uint8_t flags);      // Setting flags
-```
-The way this is typically done is a list of settings in a macro, allowing the definition of the settings and the calling of the `revk_register` all to be done from the same list.
-
-For example, define settings like this
-
-```
-#define settings                \
-        u8(webcontrol,2)        \
-        bl(debug)               \
-```
-
-You can then define the values, e.g.
-
-```
-#define u8(n,d) uint8_t n;
-#define bl(n) uint8_t n;
-settings
-#undef u8
-#undef bl
-```
-
-And in `app_main` call the `revk_register` like this.
-
-```
-#define bl(n) revk_register(#n,0,sizeof(n),&n,NULL,SETTING_BOOLEAN|SETTING_LIVE);
-#define u8(n,d) revk_register(#n,0,sizeof(n),&n,str(d),0);
-   settings
-#undef u8
-#undef bl
-```
-
-Obviously there could be way more types and flags you can use for different types of settings. This example uses `bl()` for "Boolean, live update", and `u8()` for `uint8_t` with a default value.
-
-It is possible to flag fields as needing various bit tags based on a string of characters, and even as needing hex encoding of the value. Settings can live, and apply when sent, or by default they are stored and a reboot is done in a few seconds. It is a good idea to look at some of the existing apps to see the ways settings can be used.
-
-#### Flags
-
-|Flag|meaning|
-|----|-------|
-|`LIVE`|The setting is always applied live, it also gets written to flash but does not cause a reboot.|
-|`BINDATA`|This is a binary block. If fixed size then this is just a malloc'd block. If variable then this is a pointer to `revk_bin_t` which incldes a length|
-|`SIGNED`|Numeric value is signed|
-|`BOOLEAN`|Boolean - if an array then an array of bits in a value|
-|`BITFIELD`|Numeric value has high bits reserved for a series of character flags (initial string in the default value string followed by a space and actual default)|
-|`HEX`|Source is hex coded|
-|`SET`|Top bit of numeric value is reserved - set if the value has been set|
-|`SECRET`|Don't output this setting|
-|`FIX`|This setting is always written to flash, meaning any defaults are only every used on first run|
+See [Settings system](revk-settings.md).
 
 ### Useful functions tracking state
 
@@ -277,3 +224,5 @@ You do not need to close everything, when you finish the construction all necess
 The status LED can be set by `revk_blink (uint8_t on, uint8_t off, const char *colours)` where colours is a string of at least one character being from `RGBCMYKW` for basic RGB colours. The LED will blink with the on/off times specified (10th second period) in the sequence of colours specified, repeating. Colours only apply if a RGB or WS2812B LEDs are defined in `blink`.
 
 Note that if `led_strip` is included in managed components then the library can work a WS2812B LED instead of discrete RGB LEDs. This will normally create a single LED *strip*. However `revk_strip` can be initialised before starting the library to allow more LEDs, and the library will set the first LED for status and update all LEDs 10 times a second. This allows the application to set other LEDs with `led_strip_set_pixel (revk_strip, i, r, g, b)` and rely on it being refreshed automatically by the library. Where the `revk_strip` is preset, this process applies ever if a fixed LED or fixed RGB LED is also defined in `blink`.
+
+See [Default LEDs](LED.md) for standard/default LED sequences.

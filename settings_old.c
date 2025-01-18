@@ -5,6 +5,7 @@
 #include <esp_mesh.h>
 #endif
 static const char __attribute__((unused)) * TAG = "Settings";
+extern char *topicsetting;
 
 typedef struct setting_s setting_t;
 struct setting_s
@@ -1133,6 +1134,14 @@ void
 revk_settings_commit (void)
 {
    REVK_ERR_CHECK (nvs_commit (revk_nvs));
+}
+
+static void
+revk_settings_factory (const char *tag, const char *appname, char full)
+{                               // Factory reset settings
+   esp_err_t e = nvs_flash_erase ();
+   if (!e)
+      e = nvs_flash_erase_partition (tag);
 }
 
 #endif
