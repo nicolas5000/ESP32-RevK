@@ -385,6 +385,7 @@ main (int argc, const char *argv[])
       char hasunit = 0;
       char hascomment = 0;
       char hasplace = 0;
+      char hasenum = 0;
 
       if (!nocomment)
       {
@@ -399,6 +400,10 @@ main (int argc, const char *argv[])
          if (d)
             hasplace = 1;
       }
+
+      for (d = defs; d && (!d->attributes || !strstr (d->attributes, ".enum=")); d = d->next);
+      if (d)
+         hasenum = 1;
 
       for (d = defs; d && (!d->attributes || !strstr (d->attributes, ".old=")); d = d->next);
       if (d)
@@ -448,6 +453,8 @@ main (int argc, const char *argv[])
                " const char name[%d];\n"        //
                " const char *def;\n"    //
                " const char *flags;\n", maxname + 1);
+      if (hasenum)
+         fprintf (H, " const char *enum;\n");
       if (hasold)
          fprintf (H, " const char *old;\n");
       if (hasunit)
@@ -479,6 +486,12 @@ main (int argc, const char *argv[])
                " uint8_t gpio:1;\n"     //
                " uint8_t rtc:1;\n"      //
                "};\n");
+
+      if(hasenum)
+      for (d = defs; d;d=d->next)if(d->attributes && strstr (d->attributes, ".enum="))
+      { // Create local enums
+
+      }
 
       for (d = defs; d && (!d->type || strcmp (d->type, "blob")); d = d->next);
       if (d)
@@ -571,6 +584,8 @@ main (int argc, const char *argv[])
       if (hasoctet)
          fprintf (H, " REVK_SETTINGS_OCTET,\n");
       fprintf (H, "};\n");
+      if (hasenum)
+         fprintf (H, "#define	REVK_SETTINGS_HAS_ENUM\n");
       if (hasold)
          fprintf (H, "#define	REVK_SETTINGS_HAS_OLD\n");
       if (hasunit)
