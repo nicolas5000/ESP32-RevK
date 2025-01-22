@@ -3237,6 +3237,29 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
       place = "Unused";
    if (s->ptr == &hostname)
       place = revk_id;          // Special case
+#ifdef  REVK_SETTINGS_HAS_ENUM
+   if (s->isenum)
+   {
+      revk_web_send (req, "<td nowrap><select name=\"_%s\" onchange=\"this.name='%s';settings.__%s.name='%s';\">", field, field,
+                     field, field);
+      const char *e = s->enums;
+      int n = 0;
+      int v = atoi (value);
+      if (e)
+         while (*e)
+         {
+            const char *p = e;
+            while (*e && *e != ',')
+               e++;
+            revk_web_send (req, "<option value=\"%d\"%s>%.*s</option>", n, n == v ? " selected" : "", (int) (e - p), p);
+            if (*e == ',')
+               e++;
+            n++;
+         }
+      revk_web_send (req, "</select></td><td>%s</td></tr>", comment);
+      return;
+   }
+#endif
 #ifdef  REVK_SETTINGS_HAS_BIT
    if (s->type == REVK_SETTINGS_BIT)
    {

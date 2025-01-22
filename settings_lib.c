@@ -414,6 +414,10 @@ parse_numeric (revk_settings_t * s, void **pp, const char **dp, const char *e)
          f |= (1ULL << (--bits));
       int top = bits - 1;
       const char *b = s->flags;
+#ifdef	REVK_SETTINGS_HAS_ENUM
+      if (s->isenum)
+         b = NULL;
+#endif
       void scan (void)
       {                         // Scan for flags
          while (d < e && *d != ' ' && *d != ',')
@@ -557,7 +561,11 @@ text_numeric (revk_settings_t * s, void *p)
    {
       const char *f = NULL;
       int bit = bits - 1;
-      if (s->flags)
+      if (s->flags
+#ifdef	REVK_SETTINGS_HAS_ENUM
+          && !s->isenum
+#endif
+         )
       {
          // Count down bits in use
          for (f = s->flags; *f; f++)
@@ -1015,15 +1023,24 @@ revk_settings_load (const char *tag, const char *appname)
                      } else
                      {
 #ifdef	REVK_SETTINGS_HAS_OLD
-                        for (s = revk_settings;
-                             s->len && !(s->revk == revk && s->old && !s->array && !strcmp (s->old, info.key)); s++);
-                        if (s->len)
-                        {
-                           err = nvs_get (s, info.key, 0);      // Exact match (old)
+                        if (l && (info.key[l - 1] & 0x80))
+                        {       // Array (new style)
+                           for (s = revk_settings;
+                                s->len && !(s->revk == revk && s->old && s->array && strlen (s->old) == l - 1
+                                            && !strncmp (s->old, info.key, l - 1)); s++);
+                           if (s->len)
+                              err = nvs_get (s, info.key, index = info.key[l - 1] - 0x80);      // Exact match (old)
                         } else
+                        {       // Non array
+                           for (s = revk_settings;
+                                s->len && !(s->revk == revk && s->old && !s->array && !strcmp (s->old, info.key)); s++);
+                           if (s->len)
+                              err = nvs_get (s, info.key, 0);   // Exact match (old)
+                        }
+                        if (!s->len)
 #endif
                         {
-                           addzap (NULL, 0);    // Not doing old array or old style array - can add if needed
+                           addzap (NULL, 0);
                            err = "Not matched";
                         }
                      }

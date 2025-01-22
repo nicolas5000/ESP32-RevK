@@ -76,6 +76,8 @@ typename (FILE * O, const char *type)
       fprintf (O, "revk_gpio_t");
    else if (!strcmp (type, "blob"))
       fprintf (O, "revk_settings_blob_t*");
+   else if (!strcmp (type, "enum"))
+      fprintf (O, "uint8_t");
    else if (!strcmp (type, "s") || !strcmp (type, "json"))
       fprintf (O, "char*");
    else if (*type == 'c' && is_digit (type[1]))
@@ -401,10 +403,6 @@ main (int argc, const char *argv[])
             hasplace = 1;
       }
 
-      for (d = defs; d && (!d->attributes || !strstr (d->attributes, ".enum=")); d = d->next);
-      if (d)
-         hasenum = 1;
-
       for (d = defs; d && (!d->attributes || !strstr (d->attributes, ".old=")); d = d->next);
       if (d)
          hasold = 1;
@@ -435,6 +433,14 @@ main (int argc, const char *argv[])
       if (d)
          hasjson = 1;
 
+      for (d = defs; d && (!d->type || strcmp (d->type, "enum")); d = d->next);
+      if (d)
+         hasenum = 1;
+
+      for (d = defs; d && (!d->type || strcmp (d->type, "gpio")); d = d->next);
+      if (d)
+         hasgpio = 1;
+
       fprintf (C, "\n");
       fprintf (C, "#include <stdint.h>\n");
       fprintf (C, "#include \"sdkconfig.h\"\n");
@@ -451,10 +457,14 @@ main (int argc, const char *argv[])
                "struct revk_settings_s {\n"     //
                " void *ptr;\n"  //
                " const char name[%d];\n"        //
-               " const char *def;\n"    //
-               " const char *flags;\n", maxname + 1);
+               " const char *def;\n", maxname + 1);
       if (hasenum)
-         fprintf (H, " const char *enum;\n");
+         fprintf (H, " union {\n"       //
+                  "  const char *flags;\n"      //
+                  "  const char *enums;\n"      //
+                  " };\n");
+      else
+         fprintf (H, " const char *flags;\n");
       if (hasold)
          fprintf (H, " const char *old;\n");
       if (hasunit)
@@ -483,15 +493,52 @@ main (int argc, const char *argv[])
                " uint8_t base64:1;\n"   //
                " uint8_t secret:1;\n"   //
                " uint8_t dq:1;\n"       //
-               " uint8_t gpio:1;\n"     //
-               " uint8_t rtc:1;\n"      //
-               "};\n");
+               " uint8_t rtc:1;\n");
+      if (hasgpio)
+         fprintf (H, " uint8_t gpio:1;\n");
+      if (hasenum)
+         fprintf (H, " uint8_t isenum:1;\n");   // 
+      fprintf (H, "};\n");
 
-      if(hasenum)
-      for (d = defs; d;d=d->next)if(d->attributes && strstr (d->attributes, ".enum="))
-      { // Create local enums
-
-      }
+      if (hasenum)
+         for (d = defs; d; d = d->next)
+            if (d->type && !strcmp (d->type, "enum"))
+            {                   // Create local enums
+               const char *e = NULL;
+               if (!d->attributes || !(e = strstr (d->attributes, ".enums=\"")))
+                  errx (1, "enum needs .enums=\"...\"");
+               e += 8;
+	       int n=0;
+               fprintf (H, "enum {\n");
+               while (*e && *e != '"')
+               {
+                  fprintf (H, " REVK_SETTINGS_");
+                  const char *p = d->name;
+                  while (*p)
+                  {
+                     if (isalnum (*p))
+                        putc (toupper (*p), H);
+                     else
+                        putc ('_', H);
+                     p++;
+                  }
+                  putc ('_', H);
+                  while (*e && *e != ',' && *e != '"')
+                  {
+                     if (isalnum (*e))
+                        putc (toupper (*e), H);
+                     else
+                        putc ('_', H);
+                     e++;
+                  }
+                  if (*e == ',')
+                     e++;
+                  fprintf (H, ",\n");
+		  n++;
+               }
+               fprintf (H, "};\n");
+	       if(n>255)errx(1,"Enum too big");
+            }
 
       for (d = defs; d && (!d->type || strcmp (d->type, "blob")); d = d->next);
       if (d)
@@ -503,10 +550,8 @@ main (int argc, const char *argv[])
                   "};\n");
          hasblob = 1;
       }
-      for (d = defs; d && (!d->type || strcmp (d->type, "gpio")); d = d->next);
-      if (d)
+      if (hasgpio)
       {
-         hasgpio = 1;
          hasunsigned = 1;       // GPIO is treated as a u16
          fprintf (H, "typedef struct revk_gpio_s revk_gpio_t;\n"        //
                   "struct revk_gpio_s {\n"      //
@@ -645,6 +690,8 @@ main (int argc, const char *argv[])
                fprintf (C, ".type=REVK_SETTINGS_UNSIGNED");
             else if (!strcmp (d->type, "gpio"))
                fprintf (C, ".type=REVK_SETTINGS_UNSIGNED,.gpio=1");
+            else if (!strcmp (d->type, "enum"))
+               fprintf (C, ".type=REVK_SETTINGS_UNSIGNED,.isenum=1");
             else if (!strcmp (d->type, "bit"))
                fprintf (C, ".type=REVK_SETTINGS_BIT");
             else if (!strcmp (d->type, "blob"))
