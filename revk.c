@@ -3595,7 +3595,7 @@ revk_web_settings (httpd_req_t * req)
             for (revk_settings_t * s = revk_settings; s->len; s++)
                if (!s->hide && s->revk == (page == -3 ? 1 : 0))
                {
-                  void adda (revk_settings_t * s.int i)
+                  void adda (revk_settings_t * s, int i)
                   {
                      char tag[32];
                      snprintf (tag, sizeof (tag), "%s%d", s->name, i + 1);
