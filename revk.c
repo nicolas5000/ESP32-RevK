@@ -3633,16 +3633,17 @@ revk_web_settings (httpd_req_t * req)
                      found[s->group / 8] |= (1 << (s->group & 7));
                      revk_settings *g = NULL;
                      if (s->array)
-                        if (!g->hide && g->group == s->group && s->array != g->array)
-                           break;
+                        for (g = revk_settings; g->len; g++)
+                           if (!g->hide && g->group == s->group && s->array != g->array)
+                              break;
                      if (g && !s->len)
                         for (int i = 0; i < s->array; i++)
                         {
-                           for (revk_settings_t * g = revk_settings; g->len; g++)
+                           for (g = revk_settings; g->len; g++)
                               if (!g->hide && g->group == s->group)
                                  adda (s, i);
                      } else
-                        for (revk_settings_t * g = revk_settings; g->len; g++)
+                        for (g = revk_settings; g->len; g++)
                            if (!g->hide && g->group == s->group)
                               add (g);
                      line = 1;
