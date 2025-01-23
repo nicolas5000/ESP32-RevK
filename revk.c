@@ -3547,12 +3547,11 @@ revk_web_settings (httpd_req_t * req)
       case -1:                 // Basic
          if (!revk_link_down () && *otahost)
          {
-#ifndef  CONFIG_REVK_OLD_SETTINGS
             if (otadays)
                revk_web_setting_s (req, "Auto upgrade", "otaauto", otaauto, NULL, "Automatic updates");
 #ifdef	CONFIG_REVK_WEB_BETA
+	    x
             revk_web_setting (req, "Beta software", "otabeta");
-#endif
 #endif
             hr ();
          }
