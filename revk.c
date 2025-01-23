@@ -3550,7 +3550,6 @@ revk_web_settings (httpd_req_t * req)
             if (otadays)
                revk_web_setting_s (req, "Auto upgrade", "otaauto", otaauto, NULL, "Automatic updates");
 #ifdef	CONFIG_REVK_WEB_BETA
-	    x
             revk_web_setting (req, "Beta software", "otabeta");
 #endif
             hr ();
