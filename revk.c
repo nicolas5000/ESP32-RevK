@@ -1878,9 +1878,12 @@ task (void *pvParameters)
    uint32_t ota_check = 0;
    if (otaauto)
    {
+#ifdef CONFIG_REVK_WEB_BETA
       if (otabeta)
          ota_check = 86400 - 1800 + (esp_random () % 3600);     //  A day ish
-      else if (otastart)
+      else
+#endif
+      if (otastart)
          ota_check = otastart + (esp_random () % otastart);     // Check at start anyway
       else if (otadays)
          ota_check = 86400 * otadays + (esp_random () % 3600);  // Min periodic check
@@ -1954,9 +1957,12 @@ task (void *pvParameters)
                ota_check = now + (esp_random () % 21600);       // A periodic check should be in the middle of the night, so wait a bit more (<7200 is a startup check)
             else
             {                   // Do a check
+#ifdef CONFIG_REVK_WEB_BETA
                if (otabeta)
                   ota_check = now + 86400 - 1800 + (esp_random () % 3600);      // A day ish
-               else if (otadays)
+               else
+#endif
+               if (otadays)
                   ota_check = now + 86400 * otadays - 43200 + (esp_random () % 86400);  // Next check approx otadays days later
                else
                   ota_check = 0;
@@ -3531,9 +3537,11 @@ revk_web_settings (httpd_req_t * req)
          addpage (-3, "Library");
 #endif
          if (!revk_link_down () && *otahost && page == -1)
-            revk_web_send (req,
-                           "</td><td id=_upgrade><input name=_upgrade type=submit value='Upgrade now from %s%s'>",
-                           otahost, otabeta ? " (beta)" : "");
+            revk_web_send (req, "</td><td id=_upgrade><input name=_upgrade type=submit value='Upgrade now from %s%s'>", otahost,
+#ifdef CONFIG_REVK_WEB_BETA
+                           otabeta ? " (beta)" :
+#endif
+                           "");
       }
       revk_web_send (req, "</td></tr>");
       if (
@@ -4309,9 +4317,11 @@ ota_task (void *pvParameters)
                if (err == ESP_ERR_OTA_VALIDATE_FAILED && otaauto && otadays && otadays < 30)
                {                // Force long recheck delay
                   jo_t j = jo_make (NULL);
+#ifdef	CONFIG_REVK_WEB_BETA
                   if (otabeta)
                      jo_bool (j, "otabeta", 0);
                   else
+#endif
                   {
                      jo_int (j, "otadays", 30);
                      jo_bool (j, "otastart", 0);
@@ -4368,7 +4378,11 @@ revk_upgrade_url (const char *val, const char *ext)
 #else
                 "http",         /* If not signed, use http as code should be signed and this uses way less memory  */
 #endif
-                *val ? val : otahost, otabeta ? "beta/" : "", appname, revk_build_suffix, ext, revk_id);        // Hostname provided
+                *val ? val : otahost,
+#ifdef	CONFIG_REVK_WEB_BETA
+                otabeta ? "beta/" :
+#endif
+                "", appname, revk_build_suffix, ext, revk_id);  // Hostname provided
    return url;
 }
 

@@ -9,7 +9,9 @@ s	ota.host	CONFIG_REVK_OTAHOST	.revk=1	.live=1		// OTA hostname
 u8	ota.days	CONFIG_REVK_OTADAYS	.revk=1			// OTA auto load (days)
 u16	ota.start	600			.revk=1			// OTA check after startup (min seconds)
 bit	ota.auto	1			.revk=1	.hide=1 .live=1	// OTA auto upgrade
+#ifdef	CONFIG_REVK_WEB_BETA
 bit	ota.beta				.revk=1	.hide=1 .live=1	// OTA from beta release
+#endif
 blob	ota.cert	CONFIG_REVK_OTACERT	.revk=1	.base64=1	// OTA cert of otahost
 s	ntphost		CONFIG_REVK_NTPHOST	.revk=1			// NTP host
 s	tz		CONFIG_REVK_TZ		.revk=1	.hide=1		// Timezone (<a href='https://gist.github.com/alwynallan/24d96091655391107939' target=_blank>info</a>)
