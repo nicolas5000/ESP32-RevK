@@ -1948,7 +1948,7 @@ task (void *pvParameters)
                lwmqtt_reconnect6 (mqtt_client[i]);
 #endif
          }
-         if (!b.disableupgrade && otaauto && ota_check && ota_check < now)
+         if (!b.disableupgrade && !b.disablewifi && otaauto && ota_check && ota_check < now)
          {                      // Check for s/w update
             time_t t = time (0);
             struct tm tm = { 0 };
