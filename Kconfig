@@ -41,7 +41,7 @@ menu "RevK"
 	config REVK_BLINK
         string "Blink GPIOs"
         default ""
-	depends on REVK_BLINK_LIB
+	depends on REVK_BLINK_DEF
         help
 		One or more (space separated) LED GPIOs
 
