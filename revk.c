@@ -2027,10 +2027,12 @@ task (void *pvParameters)
 #endif
 #ifdef  CONFIG_IDF_TARGET_ESP32S3
             if (!b.disableusb && usbuptime && now > usbuptime && now < usbuptime + 10 && !restart_time)
-            { // Turn off USB
+            {                   // Turn off USB
+               ESP_LOGE (TAG, "USB Shutdown after %d seconds", usbuptime);
+               usleep (100000);
                b.disableusb = 1;
-	       gpio_reset_pin(19);
-	       gpio_reset_pin(20);
+               gpio_reset_pin (19);
+               gpio_reset_pin (20);
             }
 #endif
          }
