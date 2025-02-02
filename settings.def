@@ -13,9 +13,22 @@ bit	ota.auto	1			.revk=1	.hide=1 .live=1	// OTA auto upgrade
 bit	ota.beta				.revk=1	.hide=1 .live=1	// OTA from beta release
 #endif
 blob	ota.cert	CONFIG_REVK_OTACERT	.revk=1	.base64=1	// OTA cert of otahost
+
+bit	dark					.revk=1 .live=1			// Default LED off
+
 s	ntphost		CONFIG_REVK_NTPHOST	.revk=1			// NTP host
 s	tz		CONFIG_REVK_TZ		.revk=1	.hide=1		// Timezone (<a href='https://gist.github.com/alwynallan/24d96091655391107939' target=_blank>info</a>)
 u32	watchdogtime	CONFIG_REVK_WATCHDOG	.revk=1			// Watchdog (seconds)
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+u16	usbuptime	CONFIG_REVK_USBUPTIME	.revk=1			// USB  turns off after this many seconds
+#endif
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+gpio	factorygpio	-21			.revk=1			// Factory reset GPIO (press 3 times)
+#else
+gpio	factorygpio				.revk=1			// Factory reset GPIO (press 3 times)
+#endif
+
+
 s	topic.group				.revk=1 .array=2	// MQTT Alternative hostname accepted for commands
 s	topic.command	command			.revk=1 .old="prefixcommand"			// MQTT Topic for commands 
 s	topic.setting	setting			.revk=1 .old="prefixsetting"			// MQTT Topic for settings
@@ -29,17 +42,6 @@ bit	prefix.host	CONFIG_REVK_PREFIXHOST	.revk=1			// MQTT use (appname/)hostname/
 #ifdef	CONFIG_REVK_BLINK_DEF
 gpio	blink		CONFIG_REVK_BLINK	.revk=1	.array=3	// R, G, B LED array (set all the same for WS2812 LED)
 #endif
-#ifdef  CONFIG_IDF_TARGET_ESP32S3
-u16	usbuptime	CONFIG_REVK_USBUPTIME	.revk=1			// USB  turns off after this many seconds
-#endif
-
-bit	dark					.revk=1 .live=1			// Default LED off
-#ifdef  CONFIG_IDF_TARGET_ESP32S3
-gpio	factorygpio	-21			.revk=1			// Factory reset GPIO (press 3 times)
-#else
-gpio	factorygpio				.revk=1			// Factory reset GPIO (press 3 times)
-#endif
-
 
 #ifdef  CONFIG_REVK_APMODE
 #ifdef	CONFIG_REVK_APCONFIG
