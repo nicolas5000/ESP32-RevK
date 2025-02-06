@@ -3412,15 +3412,18 @@ revk_web_settings (httpd_req_t * req)
          jo_strncpy (j, t, sizeof (t));
          page = atoi (t);
       }
-      if (jo_find (j, "_reboot"))
-         revk_restart (3, "Reboot");
-      else if (jo_find (j, "_upgrade"))
+      if (jo_find (j, "_upgrade") || jo_find (j, "_reboot"))
       {
          const char *e = revk_settings_store (j, &location, REVK_SETTINGS_JSON_STRING); // Saved settings
          if (e && !*e && app_callback)
             app_callback (0, topiccommand, NULL, "setting", NULL);
          if (!e || !*e)
-            e = revk_command ("upgrade", NULL);
+         {
+            if (jo_find (j, "_reboot"))
+               revk_restart (3, "Reboot");
+            else
+               e = revk_command ("upgrade", NULL);
+         }
          if (e && *e)
             revk_web_send (req, "<p class=error>%s</p>", e);
 #ifdef  CONFIG_REVK_SETTINGS_PASSWORD
