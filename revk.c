@@ -3701,7 +3701,7 @@ revk_web_settings (httpd_req_t * req)
                   "var f=document.settings;"    //
                   "var reboot=0;"       //
                   "var ws = new WebSocket('ws://'+window.location.host+'/revk-status');ws.onopen=function(v){ws.send('%s');};"  //
-                  "ws.onclose=function(v){ws=undefined;document.getElementById('_msg').textContent=(reboot?'Rebooting':'…');if(reboot)setTimeout(function(){location.reload();},3000);};"     //
+                  "ws.onclose=function(v){ws=undefined;document.getElementById('_msg').textContent=(reboot?'Rebooting':'…');if(reboot)setTimeout(function(){location.href='/';},3000);};"     //
                   "ws.onerror=function(v){ws.close();};"        //
                   "ws.onmessage=function(e){"   //
                   "o=JSON.parse(e.data);"       //
