@@ -1933,7 +1933,11 @@ task (void *pvParameters)
             }
             b.factorywas = press;
             if (b.factorytick == 30)
+            {
+               if (b.factorycount == 1)
+                  revk_restart (1, "Reset button");
                b.factorycount = 0;      // Timeout
+            }
             if (b.factorytick < 31)
                b.factorytick++;
          }
