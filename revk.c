@@ -3612,6 +3612,8 @@ revk_web_settings (httpd_req_t * req)
 #ifdef  CONFIG_REVK_SETTINGS_PASSWORD
          hr ();
          revk_web_setting_title (req, "Password restrict all settings");
+         if (!*password)
+            revk_web_setting_info (req, "Be careful setting this as you will need it to make any more changes.");
          revk_web_setting_s (req, "Password", "password", password, NULL,
                              "Settings password (not sent securely, so use with care on local network you control)");
 #endif
