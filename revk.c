@@ -3588,6 +3588,8 @@ revk_web_settings (httpd_req_t * req)
          if (sta_netif)
          {
             revk_web_setting_title (req, "WiFi settings");
+            if (revk_link_down ())
+               revk_web_setting_info (req, "Set these to connect to your network/internet");
             revk_web_setting_s (req, "SSID", "wifissid", wifissid, "WiFi name", NULL);
             revk_web_setting_s (req, "Passphrase", "wifipass", wifipass, "WiFi pass", NULL);
             revk_web_setting_s (req, "Hostname", "hostname", hostname, NULL,
@@ -3602,7 +3604,8 @@ revk_web_settings (httpd_req_t * req)
             hr ();
          }
          revk_web_setting_title (req, "MQTT settings");
-         revk_web_setting_info (req, "Only needed if you have an MQTT server");
+         if (!*mqtthostr[0])
+            revk_web_setting_info (req, "Only needed if you have an MQTT server");
          revk_web_setting_s (req, "MQTT host", "mqtthost", mqtthost[0], "hostname", NULL);
          revk_web_setting_s (req, "MQTT user", "mqttuser", mqttuser[0], "username", NULL);
          revk_web_setting_s (req, "MQTT pass", "mqttpass", mqttpass[0], "password", NULL);
