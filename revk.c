@@ -3771,7 +3771,7 @@ revk_web_settings (httpd_req_t * req)
    }
    httpd_resp_sendstr_chunk (req, "</script>");
 #endif
-   if (!revk_linke_down () && (shutdown || page == -1))
+   if (!revk_link_down () && (shutdown || page == -1))
    {                            // IP info
       revk_web_send (req, "<table>");
       int32_t up = uptime ();
