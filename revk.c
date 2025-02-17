@@ -3604,7 +3604,7 @@ revk_web_settings (httpd_req_t * req)
             hr ();
          }
          revk_web_setting_title (req, "MQTT settings");
-         if (!*mqtthostr[0])
+         if (!*mqtthost[0])
             revk_web_setting_info (req, "Only needed if you have an MQTT server");
          revk_web_setting_s (req, "MQTT host", "mqtthost", mqtthost[0], "hostname", NULL);
          revk_web_setting_s (req, "MQTT user", "mqttuser", mqttuser[0], "username", NULL);
