@@ -46,7 +46,7 @@ The default value for a numeric setting can just be a number, e.g. `123`. For a 
 The default can also be (unquoted) a `CONFIG_...` reference.
 Where not specified the defaults for all strings are an empty string `""` (not NULL), and values are all `0`.
 
-Additional attributes are in the form of C structure initialised values, e.g. `.array=10`. These can be separated by commas or spaces.
+Additional attributes are in the form of C structure initialised values, e.g. `.array=10`. These can be separated by commas or spaces. If no `=` then `=1` is implied, idea for flags like `.hide`
 
 Note the basic syntax of the definition files are checked, and some invalid combinations reported, but not whether all the attributes are correct, they will be reported when compiling `settings.c`.
 

@@ -183,6 +183,8 @@ main (int argc, const char *argv[])
             err (1, "Cannot open %s", fn);
          while (getline (&line, &len, I) >= 0)
          {
+            FILE *att = NULL;
+            size_t atts = 0;
             char *p;
             for (p = line + strlen (line); p > line && is_space (p[-1]); p--);
             *p = 0;
@@ -242,38 +244,62 @@ main (int argc, const char *argv[])
                }
                while (*p && is_space (*p))
                   *p++ = 0;
-               if (*p == '.')
+               while (*p)
                {
-                  d->attributes = p;
-                  while (*p == '.')
+                  if (*p == '/' && p[1] == '/')
                   {
-                     while (*p && !is_space (*p))
+                     *p++ = 0;
+                     p++;
+                     while (*p && is_space (*p))
+                        p++;
+                     d->comment = p;
+                     break;
+                  } else if (*p == '.' || isalpha (*p))
+                  {
+                     if (!att)
+                        att = open_memstream (&d->attributes, &atts);
+                     else
+                        fputc (',', att);
+                     if (*p == '.')
+                        fputc (*p++, att);
+                     else
+                        fputc ('.', att);
+                     while (isalnum (*p))
+                        fputc (*p++, att);
+                     if (*p != '=')
+                     {
+                        fputc ('=', att);
+                        fputc ('1', att);
+                     } else
                      {
                         if (*p == '"' || *p == '\'')
                         {
                            char c = *p++;
+                           fputc (c, att);
                            while (*p && *p != c)
                            {
                               if (*p == '\\' && p[1])
                                  p++;
                               p++;
                            }
-                        }
-                        p++;
+                           if (*p == c)
+                              p++;
+                           fputc (c, att);
+                        } else
+                           while (*p && *p != ',' && !is_space (*p))
+                              fputc (*p++, att);
                      }
-                     while (*p && is_space (*p))
+                     while (is_space (*p))
+                        p++;
+                     if (*p == ',')
+                        p++;
+                     while (is_space (*p))
                         p++;
                   }
                }
-               if (*p == '/' && p[1] == '/')
-               {
-                  *p++ = 0;
-                  p++;
-                  while (*p && is_space (*p))
-                     p++;
-                  d->comment = p;
-               }
             }
+            if (att)
+               fclose (att);
             if (d->type)
                d->type = strdup (d->type);
             if (d->comment)
@@ -508,7 +534,7 @@ main (int argc, const char *argv[])
                if (!d->attributes || !(e = strstr (d->attributes, ".enums=\"")))
                   errx (1, "enum needs .enums=\"...\"");
                e += 8;
-	       int n=0;
+               int n = 0;
                fprintf (H, "enum {\n");
                while (*e && *e != '"')
                {
@@ -534,10 +560,11 @@ main (int argc, const char *argv[])
                   if (*e == ',')
                      e++;
                   fprintf (H, ",\n");
-		  n++;
+                  n++;
                }
                fprintf (H, "};\n");
-	       if(n>255)errx(1,"Enum too big");
+               if (n > 255)
+                  errx (1, "Enum too big");
             }
 
       for (d = defs; d && (!d->type || strcmp (d->type, "blob")); d = d->next);
