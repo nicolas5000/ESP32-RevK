@@ -246,7 +246,9 @@ main (int argc, const char *argv[])
                   *p++ = 0;
                while (*p)
                {
-                  if (*p == '/' && p[1] == '/')
+                  if (is_space (*p))
+                     p++;
+                  else if (*p == '/' && p[1] == '/')
                   {
                      *p++ = 0;
                      p++;
@@ -293,9 +295,8 @@ main (int argc, const char *argv[])
                         p++;
                      if (*p == ',')
                         p++;
-                     while (is_space (*p))
-                        p++;
-                  }
+                  } else
+                     errx (1,"Settings issue: [%s]", p);
                }
             }
             if (att)
