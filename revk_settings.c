@@ -629,7 +629,7 @@ main (int argc, const char *argv[])
             {
                fprintf (H, "extern ");
                if (typename (H, d->type))
-                  errx (1, "Unknown type %s in %s", d->type, d->fn);
+                  errx (1, "Unknown type [%s] in %s", d->type, d->fn);
                fprintf (H, " %s", d->name);
                if (d->array)
                   fprintf (H, "[%s]", d->array);
