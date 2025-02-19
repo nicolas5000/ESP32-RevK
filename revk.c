@@ -1925,25 +1925,22 @@ task (void *pvParameters)
                   b.factorycount++;
                ESP_LOGE (TAG, "Pressed factory reset button %d", b.factorycount);
                b.factorytick = 0;
-               if (b.factorycount == 3)
+            }
+            b.factorywas = press;
+            if (!press && b.factorytick == 30)
+            {
+               if (b.factorycount == 1)
+                  revk_restart (1, "Reset button");
+               else if (b.factorycount == 3)
                {                // Do factory reset
                   const esp_app_desc_t *app = esp_app_get_description ();
                   revk_settings_factory (TAG, app->project_name, 0);
                   revk_restart (3, "Factory reset");
                }
+               b.factorycount = 0;      // Timeout
             }
-            b.factorywas = press;
-            if (!press)
-            {
-               if (b.factorytick == 30)
-               {
-                  if (b.factorycount == 1)
-                     revk_restart (1, "Reset button");
-                  b.factorycount = 0;   // Timeout
-               }
-               if (b.factorytick < 31)
-                  b.factorytick++;
-            }
+            if (b.factorytick < 31)
+               b.factorytick++;
          }
       }
       static uint32_t last = 0;
