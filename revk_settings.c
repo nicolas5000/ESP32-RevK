@@ -281,7 +281,7 @@ main (int argc, const char *argv[])
                            fputc (c, att);
                            while (*p && *p != c)
                            {
-                              if (*p == '\\' && p[1])
+                              if (*p == '\\' && p[1] && p[1] != 'n')
                                  fputc (*p++, att);
                               fputc (*p++, att);
                            }
