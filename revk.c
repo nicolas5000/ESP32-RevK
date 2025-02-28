@@ -3556,12 +3556,14 @@ revk_web_settings (httpd_req_t * req)
          addpage (0, appname);
          for (int p = 1; p <= CONFIG_REVK_WEB_EXTRA_PAGES; p++)
          {
-            if (p > 1 && (p % 5) == 1)
+            if (CONFIG_REVK_WEB_EXTRA_PAGES > 5 && (p % 5) == 1)
                revk_web_send (req, "<br>");
             char temp[20];
             sprintf (temp, "%d", p);
             addpage (p, temp);
          }
+         if (CONFIG_REVK_WEB_EXTRA_PAGES > 5)
+            revk_web_send (req, "<br>");
 #endif
 #ifndef  CONFIG_REVK_OLD_SETTINGS
          for (revk_settings_t * s = revk_settings; s->len; s++)
