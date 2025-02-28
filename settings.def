@@ -1,7 +1,7 @@
 #ifdef	CONFIG_REVK_SETTINGS_PASSWORD
 s	password				.revk .hide .secret	// Settings password<br>(not sent securely so use with care)
 #endif
-s	hostname				.revk .hide			// Host name<br>used in DHCP and MQTT (optional)
+s	hostname				.revk .hide			// Host name<br>(used in DHCP and MQTT)
 // Appname is not something you should changing usually so leave as MQTT only
 s	appname		CONFIG_REVK_APPNAME	.revk .hide		// Application name
 
