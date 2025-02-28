@@ -5128,6 +5128,7 @@ getmoons (time_t t)
       moonlast = f2;
       moonnew = moontime (cycle + 2, 0);
       moonnext = moontime (cycle + 2, 0.5);
+      return;
    }
    moonlast = f1;
    moonnew = moontime (cycle + 1, 0);
