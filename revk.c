@@ -3573,7 +3573,7 @@ revk_web_settings (httpd_req_t * req)
          }
 #endif
          if (!revk_link_down () && *otahost && page == -1)
-            revk_web_send (req, "</td><td id=_upgrade><input name=_upgrade type=submit value='Upgrade now from %s%s'>", otahost,
+            revk_web_send (req, "<br<input id=_upgrade name=_upgrade type=submit value='Upgrade now from %s%s'>", otahost,
 #ifdef CONFIG_REVK_WEB_BETA
                            otabeta ? " (beta)" :
 #endif
