@@ -3552,6 +3552,15 @@ revk_web_settings (httpd_req_t * req)
                            strlen (v), l, l == page ? " checked" : "", revk_web_safe (&qs, v));
          }
          addpage (-1, "Basic");
+#ifndef  CONFIG_REVK_OLD_SETTINGS
+         for (revk_settings_t * s = revk_settings; s->len; s++)
+            if (!s->hide && !s->revk)
+            {
+               addpage (-2, "Extra");
+               break;
+            }
+         addpage (-3, "Library");
+#endif
 #ifdef	CONFIG_REVK_WEB_EXTRA
          addpage (0, appname);
          for (int p = 1; p <= CONFIG_REVK_WEB_EXTRA_PAGES; p++)
@@ -3562,17 +3571,6 @@ revk_web_settings (httpd_req_t * req)
             sprintf (temp, "%d", p);
             addpage (p, temp);
          }
-         if (CONFIG_REVK_WEB_EXTRA_PAGES > 5)
-            revk_web_send (req, "<br>");
-#endif
-#ifndef  CONFIG_REVK_OLD_SETTINGS
-         for (revk_settings_t * s = revk_settings; s->len; s++)
-            if (!s->hide && !s->revk)
-            {
-               addpage (-2, "Extra");
-               break;
-            }
-         addpage (-3, "Library");
 #endif
          if (!revk_link_down () && *otahost && page == -1)
             revk_web_send (req, "</td><td id=_upgrade><input name=_upgrade type=submit value='Upgrade now from %s%s'>", otahost,
