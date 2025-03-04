@@ -20,7 +20,7 @@ set rem=()
 set part=""
 set sign=""
 
-if(-e settings.def) then
+if(-e settings.def || -e main/settings.def) then
 	set rem=($rem CONFIG_REVK_OLD_SETTINGS);
 endif
 
