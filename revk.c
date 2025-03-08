@@ -1932,6 +1932,8 @@ task (void *pvParameters)
                {
                   if (b.factorycount == 1)
                      revk_restart (1, "Reset button");
+                  else if (b.factorycount == 2)
+                     revk_command ("upgrade", NULL);
                   else if (b.factorycount == 3)
                   {             // Do factory reset
                      const esp_app_desc_t *app = esp_app_get_description ();
