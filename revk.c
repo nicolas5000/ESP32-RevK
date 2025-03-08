@@ -1928,7 +1928,7 @@ task (void *pvParameters)
             b.factorywas = press;
             if (b.factorycount)
             {
-               if (!press && b.factorytick == 30)
+               if (!press && b.factorytick == 31)
                {
                   if (b.factorycount == 1)
                      revk_restart (1, "Reset button");
