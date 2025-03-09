@@ -241,7 +241,7 @@ jo_parse_mem_dup (const void *buf, size_t len)
 {
    if (!buf)
       return NULL;              // No buf
-   char *new = malloc (len);
+   char *new = mallocaspi (len);
    if (!new)
       return NULL;
    jo_t j = jo_parse_mem (new, len);
