@@ -237,6 +237,20 @@ jo_parse_mem (const void *buf, size_t len)
 }
 
 jo_t
+jo_parse_mem_dup (const void *buf, size_t len)
+{
+   if (!buf)
+      return NULL;              // No buf
+   char *new = malloc (len);
+   if (!new)
+      return NULL;
+   jo_t j = jo_parse_mem (new, len);
+   if (j)
+      j->alloc = 1;             // We free later
+   return j;
+}
+
+jo_t
 jo_create_mem (void *buf, size_t len)
 {                               // Start creating JSON in memory at buf, max space len.
    jo_t j = jo_new ();
