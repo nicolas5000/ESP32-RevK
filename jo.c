@@ -237,20 +237,6 @@ jo_parse_mem (const void *buf, size_t len)
 }
 
 jo_t
-jo_parse_mem_dup (const void *buf, size_t len)
-{
-   if (!buf)
-      return NULL;              // No buf
-   char *new = mallocaspi (len);
-   if (!new)
-      return NULL;
-   jo_t j = jo_parse_mem (new, len);
-   if (j)
-      j->alloc = 1;             // We free later
-   return j;
-}
-
-jo_t
 jo_create_mem (void *buf, size_t len)
 {                               // Start creating JSON in memory at buf, max space len.
    jo_t j = jo_new ();
@@ -293,15 +279,15 @@ jo_link (jo_t j)
 }
 
 jo_t
-jo_copy (jo_t j)
-{                               // Copy object - copies the object, and if allocating memory, makes copy of the allocated memory too
+jo_copy_dup (jo_t j, char dup)
+{                               // Copy object - copies the object, and if allocating memory (or dup set), makes copy of the allocated memory too
    if (!j || j->err)
       return NULL;              // No j
    jo_t n = jo_new ();
    if (!n)
       return n;                 // malloc fail
    memcpy (n, j, sizeof (*j));
-   if (j->alloc && j->buf)
+   if ((dup || j->alloc) && j->buf)
    {
       j->null = 0;
       n->buf = mallocspi (j->parse ? j->len + 1 : j->len ? : 1);
@@ -310,6 +296,7 @@ jo_copy (jo_t j)
          jo_free (&n);
          return NULL;           // malloc
       }
+      n->alloc = 1;
       if (j->parse)
       {                         // Ensure null
          n->buf[j->len] = 0;

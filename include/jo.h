@@ -38,9 +38,6 @@ jo_t jo_parse_query (const char *buf);
 // Start parsing a JSON string in memory - does not need a null - buf has to stay valid
 jo_t jo_parse_mem (const void *buf, size_t len);
 
-// Start parsing a JSON string in memory - does not need a null - but is duplicated and will be freed on jo_free call
-jo_t jo_parse_mem_dup (const void *buf, size_t len);
-
 // Start creating JSON in memory at buf, max space len.
 jo_t jo_create_mem (void *buf, size_t len);
 
@@ -53,8 +50,10 @@ jo_t jo_object_alloc (void);
 // Attempt to ensure padding on jo, else free jo and return NULL
 jo_t jo_pad (jo_t *, int);
 
-// Copy object - copies the object, and if allocating memory, makes copy of the allocated memory too
-jo_t jo_copy (jo_t);
+// Copy object - copies the object, and if allocating memory (or dup), makes copy of the allocated memory too
+jo_t jo_copy_dup (jo_t,char dup);
+#define	jo_copy(j) jo_copy_dup(j,0)
+#define	jo_dup(j) jo_copy_dup(j,1)
 
 // Move to start for parsing. If was writing, closed and set up to read instead. Clears error if reading. Safe to call with NULL
 // If safe with terminating NULL then returns pointer to the complete JSON
