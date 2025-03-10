@@ -39,7 +39,7 @@ ha_config_opts (const char *config, ha_config_t h)
       jo_string (j, "dev_cla", h.type);
    if (h.name)
       jo_string (j, "name", h.name);
-   if (h.stat)
+   if (h.stat || h.field)
    {
       addpath ("stat_t", hastatus, h.stat);
       jo_stringf (j, "val_tpl", "{{value_json.%s}}", h.field ? : h.id);
