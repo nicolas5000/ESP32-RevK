@@ -5264,7 +5264,7 @@ revk_ipv4gw (char ipv4[16])
 }
 
 char *
-revk_ipv6 (char ipv6 (40))
+revk_ipv6 (char ipv6[40])
 {
    if (!ipv6)
       return NULL;
