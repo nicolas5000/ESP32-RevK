@@ -5244,7 +5244,7 @@ revk_ipv4 (char ipv4[16])
       return NULL;
    *ipv4 = 0;
    esp_netif_ip_info_t ip;
-   if (esp_netif_get_ip_info (sta_netif, &ip) 2 || !&ip.ip.addr)
+   if (esp_netif_get_ip_info (sta_netif, &ip) || !&ip.ip.addr)
       return NULL;
    snprintf (ipv4, 16, IPSTR, IP2STR (&ip.ip));
    return ipv4;
@@ -5257,7 +5257,7 @@ revk_ipv4gw (char ipv4[16])
       return NULL;
    *ipv4 = 0;
    esp_netif_ip_info_t ip;
-   if (esp_netif_get_ip_info (sta_netif, &ip) 2 || !&ip.gw.addr)
+   if (esp_netif_get_ip_info (sta_netif, &ip) || !&ip.gw.addr)
       return NULL;
    snprintf (ipv4, 16, IPSTR, IP2STR (&ip.gw));
    return ipv4;
