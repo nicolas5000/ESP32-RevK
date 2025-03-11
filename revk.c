@@ -3812,7 +3812,7 @@ revk_web_settings (httpd_req_t * req)
             char ip[40];
             if (revk_ipv4 (ip))
                revk_web_send (req, "<tr><td>IPv4</td><td>%s</td></tr>", ip);
-            if (revk_ipv4_gw (ip))
+            if (revk_ipv4gw (ip))
                revk_web_send (req, "<tr><td>Gateway</td><td>%s</td></tr>", ip);
             if (revk_ipv6 (ip))
                revk_web_send (req, "<tr><td>IPv6</td><td>%s</td></tr>", ip);
