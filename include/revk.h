@@ -273,4 +273,8 @@ uint8_t revk_has_ip(void);
 uint8_t revk_has_ipv4(void);
 uint8_t revk_has_ipv6(void);
 
+char *revk_ipv4 (char ipv4[16]); // Current IPv4 or NULL
+char *revk_ipv4gw (char ipv4[16]); // Current IPv4 gateway or NULL
+char *revk_ipv6(char ipv6(40)); // Current main IPv6 (non FE80) or NULL
+
 #endif

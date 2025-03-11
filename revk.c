@@ -2122,18 +2122,11 @@ task (void *pvParameters)
                   jo_int (j, "chan", ap.primary);
                   if (sta_netif)
                   {
-                     {
-                        esp_netif_ip_info_t ip;
-                        if (!esp_netif_get_ip_info (sta_netif, &ip) && ip.ip.addr)
-                           jo_stringf (j, "ipv4", IPSTR, IP2STR (&ip.ip));
-                     }
-#ifdef CONFIG_LWIP_IPV6
-                     {
-                        esp_ip6_addr_t ip;
-                        if (!esp_netif_get_ip6_global (sta_netif, &ip))
-                           jo_stringf (j, "ipv6", IPV6STR, IPV62STR (ip));
-                     }
-#endif
+                     char ip[40];
+                     if (revk_ipv4 (ip))
+                        jo_stringf (j, "ipv4", ip);
+                     if (revk_ipv6 (ip))
+                        jo_stringf (j, "ipv6", ip);
                   }
                }
 #ifdef	CONFIG_REVK_STATE_EXTRA
@@ -3490,10 +3483,10 @@ revk_web_settings (httpd_req_t * req)
                   while (waiting--)
                   {
                      sleep (1);
-                     esp_netif_ip_info_t ip;
-                     if (!esp_netif_get_ip_info (sta_netif, &ip) && ip.ip.addr)
+                     char ip[16];
+                     if (revk_ipv4 (ip))
                      {
-                        revk_web_send (req, "WiFi connected <b>" IPSTR "</b>.", IP2STR (&ip.ip));       // Attempts to allow copy to clipboard fail...
+                        revk_web_send (req, "WiFi connected <b>%s</b>.", ip);
                         ok = 2;
                         break;
                      }
@@ -3816,18 +3809,14 @@ revk_web_settings (httpd_req_t * req)
       if (sta_netif)
       {
          {
-            esp_netif_ip_info_t ip;
-            if (!esp_netif_get_ip_info (sta_netif, &ip) && ip.ip.addr)
-               revk_web_send (req, "<tr><td>IPv4</td><td>" IPSTR "</td></tr>"   //
-                              "<tr><td>Gateway</td><td>" IPSTR "</td></tr>", IP2STR (&ip.ip), IP2STR (&ip.gw));
+            char ip[40];
+            if (get_ipv4 (ip))
+               revk_web_send (req, "<tr><td>IPv4</td><td>%s</td></tr>", ip);
+            if (get_ipv4_gw (ip))
+               revk_web_send (req, "<tr><td>Gateway</td><td>%s</td></tr>", ip);
+            if (revk_ipv6 (ip))
+               revk_web_send (req, "<tr><td>IPv6</td><td>%s</td></tr>", ip);
          }
-#ifdef CONFIG_LWIP_IPV6
-         {
-            esp_ip6_addr_t ip;
-            if (!esp_netif_get_ip6_global (sta_netif, &ip))
-               revk_web_send (req, "<tr><td>IPv6</td><td>" IPV6STR "</td></tr>", IPV62STR (ip));
-         }
-#endif
          {
             void dns (esp_netif_dns_type_t t)
             {
@@ -5246,6 +5235,49 @@ void
 revk_disable_settings (void)
 {
    b.disablesettings = 1;
+}
+
+char *
+revk_ipv4 (char ipv4[16])
+{
+   if (!ipv4)
+      return NULL;
+   *ipv4 = 0;
+   esp_netif_ip_info_t ip;
+   if (esp_netif_get_ip_info (sta_netif, &ip) 2 || !&ip.ip.addr)
+      return NULL;
+   snprintf (ipv4, 16, IPSTR, IP2STR (&ip.ip));
+   return ipv4;
+}
+
+char *
+revk_ipv4gw (char ipv4[16])
+{
+   if (!ipv4)
+      return NULL;
+   *ipv4 = 0;
+   esp_netif_ip_info_t ip;
+   if (esp_netif_get_ip_info (sta_netif, &ip) 2 || !&ip.gw.addr)
+      return NULL;
+   snprintf (ipv4, 16, IPSTR, IP2STR (&ip.gw));
+   return ipv4;
+}
+
+char *
+revk_ipv6 (char ipv6 (40))
+{
+   if (!ipv6)
+      return NULL;
+   *ipv6 = 0;
+#ifndef CONFIG_LWIP_IPV6
+   return NULL;
+#else
+   esp_ip6_addr_t ip;
+   if (esp_netif_get_ip6_global (sta_netif, &ip))
+      return NULL;
+   snprintf (ipv6, 40, IPV6STR, IPV62STR (ip));
+   return ipv6;
+#endif
 }
 
 #ifdef  REVK_SETTINGS_HAS_GPIO
