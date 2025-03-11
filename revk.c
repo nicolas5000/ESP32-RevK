@@ -5243,8 +5243,8 @@ revk_ipv4 (char ipv4[16])
    if (!ipv4)
       return NULL;
    *ipv4 = 0;
-   esp_netif_ip_info_t ip;
-   if (esp_netif_get_ip_info (sta_netif, &ip) || !&ip.ip.addr)
+   esp_netif_ip_info_t ip = { 0 };
+   if (esp_netif_get_ip_info (sta_netif, &ip))
       return NULL;
    snprintf (ipv4, 16, IPSTR, IP2STR (&ip.ip));
    return ipv4;
@@ -5256,8 +5256,8 @@ revk_ipv4gw (char ipv4[16])
    if (!ipv4)
       return NULL;
    *ipv4 = 0;
-   esp_netif_ip_info_t ip;
-   if (esp_netif_get_ip_info (sta_netif, &ip) || !&ip.gw.addr)
+   esp_netif_ip_info_t ip = { 0 };
+   if (esp_netif_get_ip_info (sta_netif, &ip))
       return NULL;
    snprintf (ipv4, 16, IPSTR, IP2STR (&ip.gw));
    return ipv4;
@@ -5272,7 +5272,7 @@ revk_ipv6 (char ipv6[40])
 #ifndef CONFIG_LWIP_IPV6
    return NULL;
 #else
-   esp_ip6_addr_t ip;
+   esp_ip6_addr_t ip = { 0 };
    if (esp_netif_get_ip6_global (sta_netif, &ip))
       return NULL;
    snprintf (ipv6, 40, IPV6STR, IPV62STR (ip));
