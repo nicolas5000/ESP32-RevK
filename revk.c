@@ -1471,7 +1471,11 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
             if (ip_index < 7 && !(gotip & (1 << ip_index)))
             {                   // New IPv6
                // Done as Error level as really useful if logging at all
-               ESP_LOGE (TAG, "Got IPv6 [%d] " IPV6STR " (%d)", ip_index, IPV62STR (event->ip6_info.ip), event->ip6_info.ip.zone);
+               {
+                  char ip[40];
+                  inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, 40);
+                  ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, event->ip6_info.ip.zone);
+               }
                if (!event->ip6_info.ip.zone)
                   b.gotipv6 = 1;
 #ifdef  CONFIG_REVK_WIFI
@@ -5275,9 +5279,7 @@ revk_ipv6 (char ipv6[40])
    esp_ip6_addr_t ip = { 0 };
    if (esp_netif_get_ip6_global (sta_netif, &ip))
       return NULL;
-   snprintf (ipv6, 40, IPV6STR, IPV62STR (ip));
-   for (char *p = ipv6; *p; p++)
-      *p = toupper ((int) (uint8_t) * p);
+   inet_ntop (AF_INET6, (void *) &ip, ipv6, 40);
    return ipv6;
 #endif
 }
