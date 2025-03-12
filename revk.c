@@ -1471,18 +1471,16 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
             if (ip_index < 7 && !(gotip & (1 << ip_index)))
             {                   // New IPv6
                // Done as Error level as really useful if logging at all
-               {
-                  char ip[40];
-                  inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, 40);
-                  ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, event->ip6_info.ip.zone);
-               }
+               char ip[40];
+               inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, 40);
+               ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, ip, event->ip6_info.ip.zone);
                if (!event->ip6_info.ip.zone)
                   b.gotipv6 = 1;
 #ifdef  CONFIG_REVK_WIFI
                if (app_callback)
                {
                   jo_t j = jo_object_alloc ();
-                  jo_stringf (j, "ipv6", IPV6STR, IPV62STR (event->ip6_info.ip));
+                  jo_string (j, "ipv6", ip);
                   jo_int (j, "zone", event->ip6_info.ip.zone);
                   app_callback (0, topiccommand, NULL, "ipv6", j);
                   jo_free (&j);
