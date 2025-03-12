@@ -1472,7 +1472,7 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
             {                   // New IPv6
                // Done as Error level as really useful if logging at all
                char ip[40];
-               inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, 40);
+               inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, sizeof (ip));
                ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, ip, event->ip6_info.ip.zone);
                if (!event->ip6_info.ip.zone)
                   b.gotipv6 = 1;
@@ -3810,15 +3810,13 @@ revk_web_settings (httpd_req_t * req)
       }
       if (sta_netif)
       {
-         {
-            char ip[40];
-            if (revk_ipv4 (ip))
-               revk_web_send (req, "<tr><td>IPv4</td><td>%s</td></tr>", ip);
-            if (revk_ipv4gw (ip))
-               revk_web_send (req, "<tr><td>Gateway</td><td>%s</td></tr>", ip);
-            if (revk_ipv6 (ip))
-               revk_web_send (req, "<tr><td>IPv6</td><td>%s</td></tr>", ip);
-         }
+         char ip[40];
+         if (revk_ipv4 (ip))
+            revk_web_send (req, "<tr><td>IPv4</td><td>%s</td></tr>", ip);
+         if (revk_ipv4gw (ip))
+            revk_web_send (req, "<tr><td>Gateway</td><td>%s</td></tr>", ip);
+         if (revk_ipv6 (ip))
+            revk_web_send (req, "<tr><td>IPv6</td><td>%s</td></tr>", ip);
          {
             void dns (esp_netif_dns_type_t t)
             {
@@ -3829,7 +3827,10 @@ revk_web_settings (httpd_req_t * req)
                      revk_web_send (req, "<tr><td>DNS</td><td>" IPSTR "</td></tr>", IP2STR (&dns.ip.u_addr.ip4));
 #ifdef CONFIG_LWIP_IPV6
                   else if (dns.ip.type == ESP_IPADDR_TYPE_V6)
-                     revk_web_send (req, "<tr><td>DNS</td><td>" IPV6STR "</td></tr>", IP2STR (&dns.ip.u_addr.ip6));
+                  {
+                     inet_ntop (AF_INET6, (void *) &dns.ip.u_addr.ip6, ip, sizeof (ip));
+                     revk_web_send (req, "<tr><td>DNS</td><td>%s</td></tr>", ip);
+                  }
 #endif
                }
             }
