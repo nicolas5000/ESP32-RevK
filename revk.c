@@ -5276,6 +5276,8 @@ revk_ipv6 (char ipv6[40])
    if (esp_netif_get_ip6_global (sta_netif, &ip))
       return NULL;
    snprintf (ipv6, 40, IPV6STR, IPV62STR (ip));
+   for (char *p = ipv6; *p; p++)
+      *p = toupper ((int) (uint8_t) * p);
    return ipv6;
 #endif
 }
