@@ -4883,6 +4883,8 @@ revk_season (time_t now)
          *p++ = 'Y';
       if (t.tm_mon == 9 && t.tm_mday == 31 && t.tm_hour >= 16)
          *p++ = 'H';
+      if (t.tm_mon == 2 && t.tm_mday == 17)
+         *p++ = 'P';
       const uint8_t ed[] = { 114, 103, 23, 111, 31, 118, 108, 28, 116, 105, 25, 113, 102, 22, 110, 30,
          117, 107, 27
       };
