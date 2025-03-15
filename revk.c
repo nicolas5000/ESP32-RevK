@@ -2144,23 +2144,23 @@ task (void *pvParameters)
             }
          }
 #endif
-         if (!b.disablewifi)
-         {
+         if (!b.disablewifi && !restart_time)
+         {                      // Consider restart
 #ifdef  CONFIG_REVK_MESH
             if (esp_mesh_is_root ())
             {                   // Root reset is if wifireset and alone, or mesh reset even if not alone
                if ((wifireset && revk_link_down () > wifireset && esp_mesh_get_total_node_num () <= 1)
                    || (meshreset && revk_link_down () > meshreset))
-                  revk_restart (0, "Mesh sucks");
+                  revk_restart (1, "Mesh sucks");
             } else
             {                   // Leaf reset if only if link down (meaning alone)
                if (wifireset && revk_link_down () > wifireset)
-                  revk_restart (0, "Mesh sucks");
+                  revk_restart (1, "Mesh sucks");
             }
 #else
 #ifdef	CONFIG_REVK_WIFI
             if (wifireset && revk_link_down () > wifireset)
-               revk_restart (0, "Offline too long");
+               revk_restart (1, "Offline too long");
 #endif
 #endif
          }
