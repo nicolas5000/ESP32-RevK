@@ -65,7 +65,7 @@ blob	client.cert				.revk	.base64 	// Client certificate (OTA and MQTT TLS)
 
 
 #if     defined(CONFIG_REVK_WIFI) || defined(CONFIG_REVK_MESH)
-u16	wifi.reset	CONFIG_REVK_WIFIRESET	.revk .hide		// Restart if WiFi off for this long (seconds)
+u16	wifi.reset	CONFIG_REVK_WIFIRESET	.revk 			// Restart if WiFi off for this long (seconds)
 s	wifi.ssid	CONFIG_REVK_WIFISSID	.revk	.hide		// WiFI SSID (name)
 s	wifi.pass	CONFIG_REVK_WIFIPASS	.revk	.hide .secret	// WiFi password
 s	wifi.ip		CONFIG_REVK_WIFIIP	.revk			// WiFi Fixed IP
