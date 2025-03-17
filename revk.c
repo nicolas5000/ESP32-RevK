@@ -1,5 +1,4 @@
-// Main control code, working with WiFi, MQTT, and managing settings and OTA Copyright Â©2019 Adrian Kennard Andrews & Arnold Ltd
-
+// Main control code, working with WiFi, MQTT, and managing settings and OTA Copyright Â ©2019 Adrian Kennard Andrews & Arnold Ltd
 static const char __attribute__((unused)) * TAG = "RevK";
 
 //#define       SETTING_DEBUG
@@ -971,6 +970,16 @@ revk_send_subunsub (int client, const mac_t mac, uint8_t sub)
 #endif
 
 #ifdef	CONFIG_REVK_MQTT
+typedef struct mqtt_cb_s mqtt_cb_t;
+struct mqtt_cb_s
+{
+   mqtt_cb_t *next;
+   revk_mqtt_cb_t *cb;
+   void *arg;
+   char *sub;                   // malloc
+   uint8_t client;
+} *mqtt_cb = NULL;
+
 static void
 mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
 {                               // Expects to be able to write over topic
@@ -1054,6 +1063,10 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
       }
 #endif
 
+      char *topiccopy = NULL;
+      if (mqtt_cb)
+         topiccopy = strdup (topic);
+
       // NULL terminate stuff
       if (prefix && prefix > topic && prefix[-1] == '/')
          prefix[-1] = 0;
@@ -1112,6 +1125,12 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
          }
          jo_rewind (j);
       }
+
+      for (mqtt_cb_t * s = mqtt_cb; s; s = s->next)
+         if (s->cb && s->client == client && lwmqtt_match (s->sub, topiccopy))
+            s->cb (s->arg, topiccopy, j);
+      free (topiccopy);
+
       const char *location = NULL;
       if (!err)
       {
@@ -1194,6 +1213,8 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
          app_callback (client, topiccommand, NULL, "connect", j);
          jo_free (&j);
       }
+      for (mqtt_cb_t * s = mqtt_cb; s; s = s->next)
+         lwmqtt_subscribe (mqtt_client[client], s->sub);
    } else
    {
       if (xEventGroupGetBits (revk_group) & (GROUP_MQTT << client))
@@ -5395,5 +5416,50 @@ revk_gpio_get (revk_gpio_t g)
    if (g.set && GPIO_IS_VALID_GPIO (g.num))
       return gpio_get_level (g.num) ^ g.invert;
    return 0;
+}
+
+void
+revk_mqtt_sub (int client, const char *topic, revk_mqtt_cb_t * cb, void *arg)
+{                               // Subscribe (does so on reconnect as well) - calls back when received
+   if (client >= CONFIG_REVK_MQTT_CLIENTS || !topic)
+      return;
+   mqtt_cb_t *c;
+   for (c = mqtt_cb; c; c = c->next)
+      if (c->client == client && !strcmp (c->sub, topic))
+         return;                // Duplicate
+   if (!(c = mallocspi (sizeof (*c))))
+      return;
+   c->next = mqtt_cb;
+   c->cb = cb;
+   c->arg = arg;
+   c->client = client;
+   c->sub = strdup (topic);
+   mqtt_cb = c;
+   if (lwmqtt_connected (mqtt_client[client]))
+      lwmqtt_subscribe (mqtt_client[client], topic);
+   ESP_LOGD (TAG, "Register MQTT %s", topic);
+}
+
+void
+revk_mqtt_unsub (int client, const char *topic)
+{                               // Unsubscribe
+   if (client >= CONFIG_REVK_MQTT_CLIENTS || !topic)
+      return;
+   mqtt_cb_t **cp = &mqtt_cb;
+   while (*cp)
+   {
+      mqtt_cb_t *c = *cp;
+      if (c->client == client && strcmp (c->sub, topic))
+      {
+         *cp = c->next;
+         free (c->sub);
+         free (c);
+         continue;
+      }
+      cp = &c->next;
+   }
+   if (lwmqtt_connected (mqtt_client[client]))
+      lwmqtt_unsubscribe (mqtt_client[client], topic);
+   ESP_LOGD (TAG, "Deregister MQTT %s", topic);
 }
 #endif

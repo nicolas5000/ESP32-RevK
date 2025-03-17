@@ -155,6 +155,7 @@ esp_err_t revk_err_check (esp_err_t e);
 // Make a task
 TaskHandle_t revk_task (const char *tag, TaskFunction_t t, const void *param, int kstack);
 
+#ifdef	CONFIG_REVK_MQTT
 // reporting via main MQTT, copy option is how many additional MQTT to copy, normally 0 or 1. Setting -N means send only to specific additional MQTT, return NULL for no error
 const char *revk_mqtt_send_raw (const char *topic, int retain, const char *payload, uint8_t clients);
 const char *revk_mqtt_send_payload_clients (const char *prefix, int retain, const char *suffix, const char *payload,
@@ -169,9 +170,20 @@ const char *revk_error_clients (const char *suffix, jo_t *, uint8_t clients);
 #define revk_error(t,j) revk_error_clients(t,j,1)
 const char *revk_info_clients (const char *suffix, jo_t *, uint8_t clients);
 #define revk_info(t,j) revk_info_clients(t,j,1)
-
 const char *revk_mqtt_send_clients (const char *prefix, int retain, const char *suffix, jo_t * jp, uint8_t clients);
 #define revk_mqtt_send(p,r,t,j) revk_mqtt_send_clients(p,r,t,j,1)
+
+char *revk_topic (const char *name, const char *id, const char *suffix); // the topic we are using (depends on settings)
+
+void revk_send_subunsub (int client, const mac_t,uint8_t sub);	// Low level send sub and unsub
+#define revk_send_sub(c,m) revk_send_subunsub(c,m,1)
+#define revk_send_unsub(c,m) revk_send_subunsub(c,m,0)
+
+typedef	void revk_mqtt_cb_t(void*,const char *topic,jo_t); // Callback for subscribed
+void revk_mqtt_sub(int client,const char *topic,revk_mqtt_cb_t*,void*);	// Subscribe (does so on reconnect as well) - calls back when received
+void revk_mqtt_unsub(int client,const char *topic);	// Unsubscribe
+
+#endif
 
 #define	REVK_SETTINGS_PASSOVERRIDE	1	// Ignore password
 #define	REVK_SETTINGS_JSON_STRING	2	// Expect JSON fields to be strings
@@ -201,12 +213,6 @@ int revk_wait_wifi (int seconds);       // Wait for wifi
 #ifdef	CONFIG_REVK_MESH
 extern uint16_t meshmax;
 void revk_mesh_send_json (const mac_t mac, jo_t * jp);
-#endif
-#ifdef	CONFIG_REVK_MQTT
-char *revk_topic (const char *name, const char *id, const char *suffix);
-void revk_send_subunsub (int client, const mac_t,uint8_t sub);
-#define revk_send_sub(c,m) revk_send_subunsub(c,m,1)
-#define revk_send_unsub(c,m) revk_send_subunsub(c,m,0)
 #endif
 
 void revk_blink (uint8_t on, uint8_t off, const char *colours); // Set LED blink rate and colour sequence for on state (for RGB LED even if not LED strip)

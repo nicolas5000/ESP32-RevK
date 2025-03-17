@@ -1006,3 +1006,42 @@ lwmqtt_failed (lwmqtt_t handle)
       return -handle->failed;   // failed
    return handle->backoff;      // Trying
 }
+
+const char *
+lwmqtt_match (const char *sub, const char *topic)
+{                               // NULL if no match, else match returns at #, or start of topic if no #
+   const char *s = sub;
+   const char *t = topic;
+   if (*t == '$' && (*s == '+' || *s == '#'))
+      return NULL;              // Must not match
+   while (*s || *t)
+   {                            // scan pattern
+      if (*s == '#' && !s[1])
+         return t;              // Match rest of topic
+      if (*s == '+' && (!s[1] || s[1] == '/'))
+      {                         // Single level match
+         s++;                   // Matched to the +
+         while (*t && *t != '/')
+            t++;
+      } else
+      {                         // Check exactly
+         while (*s && *s != '/' && *t && *t != '/' && *s == *t)
+         {
+            s++;
+            t++;
+         }
+      }
+      if (!*t && s[0] == '/' && s[1] == '#' && !s[2])
+         return topic;          // A pattern ending /# matches without the parent, i.e. without the /
+      if (*s == '/' && *t == '/')
+      {                         // Matched to end of part
+         s++;
+         t++;
+         continue;
+      }
+      if (!*s && !*t)
+         return topic;
+      return NULL;
+   }
+   return NULL;
+}
