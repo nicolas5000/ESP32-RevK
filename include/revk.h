@@ -252,6 +252,7 @@ const char *revk_season (time_t now);   // Return a character for seasonal varia
 time_t revk_moon_full_last (time_t t);  // last full moon (so <=t)
 time_t revk_moon_new (time_t t);        // Current new moon - may be >t or <=t
 time_t revk_moon_full_next (time_t t);  // next full moon (so >t)
+uint8_t revk_moon_plase(time_t t);	// phase 0-359 from full moon
 #endif
 
 #ifdef	CONFIG_REVK_SOLAR

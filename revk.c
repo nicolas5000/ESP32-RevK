@@ -5177,6 +5177,13 @@ revk_moon_full_next (time_t t)
    return moonnext;
 }
 
+uint8_t
+revk_moon_plase (time_t t)
+{                               // phase 0-359 from full moon
+   getmoons (t);
+   return (t - moonlast) * 360 / (moonnext - moonlast);
+}
+
 #endif
 
 uint8_t
