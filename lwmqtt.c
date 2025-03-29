@@ -362,13 +362,15 @@ lwmqtt_subscribeub (lwmqtt_t handle, const char *topic, char unsubscribe)
       int mlen = 2 + 2 + tlen;
       if (!unsubscribe)
          mlen++;                // QoS requested
-      if (mlen >= 128 * 128)
+      if (mlen >= 128 * 128 * 128)
          ret = "Too big";
       else
       {
+         if (mlen >= 128 * 128)
+            mlen++;
          if (mlen >= 128)
-            mlen++;             // two byte len
-         mlen += 2;             // header and one byte len
+            mlen++;
+         mlen += 2;
          unsigned char *buf = mallocspi (mlen);
          if (!buf)
             ret = "Malloc";
@@ -384,7 +386,12 @@ lwmqtt_subscribeub (lwmqtt_t handle, const char *topic, char unsubscribe)
                {
                   unsigned char *p = buf;
                   *p++ = (unsubscribe ? 0xA2 : 0x82);   // subscribe/unsubscribe
-                  if (mlen > 129)
+                  if (mlen >= 128 * 128 + 3)
+                  {             // Three bytes len
+                     *p++ = (((mlen - 4) & 0x7F) | 0x80);
+                     *p++ = (((mlen - 4) >> 7) & 0x7F);
+                     *p++ = ((mlen - 4) >> 7);
+                  } else if (mlen >= 128 + 2)
                   {             // Two byte len
                      *p++ = (((mlen - 3) & 0x7F) | 0x80);
                      *p++ = ((mlen - 3) >> 7);
