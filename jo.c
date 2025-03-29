@@ -1167,14 +1167,14 @@ jo_find (jo_t j, const char *path)
    while (*path)
    {
       jo_type_t t = jo_here (j);
-      if (t != JO_OBJECT)
-         break;                 // Not an object
       const char *tag = path;
       while (*path && *path != '.')
          path++;
       int len = path - tag;
       if (*path)
          path++;
+      if (t != JO_OBJECT)
+         break;                 // Not an object
       t = jo_next (j);
       while (t == JO_TAG)
       {                         // Scan the object

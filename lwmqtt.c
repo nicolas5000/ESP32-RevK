@@ -362,8 +362,8 @@ lwmqtt_subscribeub (lwmqtt_t handle, const char *topic, char unsubscribe)
       int mlen = 2 + 2 + tlen;
       if (!unsubscribe)
          mlen++;                // QoS requested
-      if (mlen >= 128 * 128 * 128)
-         ret = "Too big";
+      if (mlen >= 65535)
+         ret = "Topic too big";
       else
       {
          if (mlen >= 128 * 128)
@@ -437,10 +437,12 @@ lwmqtt_send_full (lwmqtt_t handle, int tlen, const char *topic, int plen, const 
       if (plen < 0)
          plen = strlen ((char *) payload ? : "");
       int mlen = 2 + tlen + plen;
-      if (mlen >= 128 * 128)
+      if (mlen >= 128 * 128 * 128)
          ret = "Too big";
       else
       {
+         if (mlen >= 128 * 128)
+            mlen++;
          if (mlen >= 128)
             mlen++;             // two byte len
          mlen += 2;             // header and one byte len
@@ -459,7 +461,12 @@ lwmqtt_send_full (lwmqtt_t handle, int tlen, const char *topic, int plen, const 
                {
                   unsigned char *p = buf;
                   *p++ = 0x30 + (retain ? 1 : 0);       // message
-                  if (mlen > 129)
+                  if (mlen >= 128 * 128 + 3)
+                  {             // Three bytes len
+                     *p++ = (((mlen - 4) & 0x7F) | 0x80);
+                     *p++ = (((mlen - 4) >> 7) & 0x7F);
+                     *p++ = ((mlen - 4) >> 7);
+                  } else if (mlen >= 128 + 2)
                   {             // Two byte len
                      *p++ = (((mlen - 3) & 0x7F) | 0x80);
                      *p++ = ((mlen - 3) >> 7);
