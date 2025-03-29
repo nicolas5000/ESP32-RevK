@@ -1168,25 +1168,53 @@ jo_find (jo_t j, const char *path)
    {
       jo_type_t t = jo_here (j);
       const char *tag = path;
-      while (*path && *path != '.')
+      if (*path == '[')
+      {
+         path = 0;
+         int n = 0;
+         while (isdigit ((int) (uint8_t) * path))
+            n = n * 10 + *path++ - '0';
+         if (*path != ']')
+            break;
          path++;
-      int len = path - tag;
-      if (*path)
-         path++;
-      if (t != JO_OBJECT)
-         break;                 // Not an object
-      t = jo_next (j);
-      while (t == JO_TAG)
-      {                         // Scan the object
-         if (len == 1 && *tag == '*')
-            break;              // Found - wildcard - only finds first entry
-         if (!jo_strncmp (j, (char *) tag, len))
-            break;              // Found
-         jo_next (j);
-         t = jo_skip (j);
+         if (t != JO_ARRAY)
+            break;              // Not an array
+         t = jo_next (j);
+         while (t && t != JO_CLOSE)
+         {
+            if (!n--)
+               break;
+            jo_skip (j);
+         }
+         if (t == JO_OBJECT && *path == '.')
+         {
+            path++;
+            continue;
+         }
+         if (!*path)
+            break;
+      } else
+      {
+         while (*path && *path != '.' && *path != '[')
+            path++;
+         int len = path - tag;
+         if (*path == '.')
+            path++;
+         if (t != JO_OBJECT)
+            break;              // Not an object
+         t = jo_next (j);
+         while (t == JO_TAG)
+         {                      // Scan the object
+            if (len == 1 && *tag == '*')
+               break;           // Found - wildcard - only finds first entry
+            if (!jo_strncmp (j, (char *) tag, len))
+               break;           // Found
+            jo_next (j);
+            t = jo_skip (j);
+         }
+         if (t != JO_TAG)
+            break;              // not found
       }
-      if (t != JO_TAG)
-         break;                 // not found
       t = jo_next (j);
       if (!*path)
          return t;              // Found
