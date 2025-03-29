@@ -389,8 +389,8 @@ lwmqtt_subscribeub (lwmqtt_t handle, const char *topic, char unsubscribe)
                   if (mlen >= 128 * 128 + 3)
                   {             // Three bytes len
                      *p++ = (((mlen - 4) & 0x7F) | 0x80);
-                     *p++ = (((mlen - 4) >> 7) & 0x7F);
-                     *p++ = ((mlen - 4) >> 7);
+                     *p++ = ((((mlen - 4) >> 7) & 0x7F)|0x80);
+                     *p++ = ((mlen - 4) >> 14);
                   } else if (mlen >= 128 + 2)
                   {             // Two byte len
                      *p++ = (((mlen - 3) & 0x7F) | 0x80);
@@ -464,8 +464,8 @@ lwmqtt_send_full (lwmqtt_t handle, int tlen, const char *topic, int plen, const 
                   if (mlen >= 128 * 128 + 3)
                   {             // Three bytes len
                      *p++ = (((mlen - 4) & 0x7F) | 0x80);
-                     *p++ = (((mlen - 4) >> 7) & 0x7F);
-                     *p++ = ((mlen - 4) >> 7);
+                     *p++ = ((((mlen - 4) >> 7) & 0x7F)|0x80);
+                     *p++ = ((mlen - 4) >> 14);
                   } else if (mlen >= 128 + 2)
                   {             // Two byte len
                      *p++ = (((mlen - 3) & 0x7F) | 0x80);
