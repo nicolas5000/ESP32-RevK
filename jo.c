@@ -1170,13 +1170,14 @@ jo_find (jo_t j, const char *path)
       const char *tag = path;
       if (*path == '[')
       {
-         path = 0;
+         path++;
          int n = 0;
          while (isdigit ((int) (uint8_t) * path))
             n = n * 10 + *path++ - '0';
          if (*path != ']')
             break;
-         path++;
+         if (*path)
+            path++;
          if (t != JO_ARRAY)
             break;              // Not an array
          t = jo_next (j);
