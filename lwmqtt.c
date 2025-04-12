@@ -344,7 +344,10 @@ lwmqtt_reconnect6 (lwmqtt_t handle)
    if (!handle)
       return;
    if (handle->running && (handle->dnsipv6 || handle->tls) && !handle->ipv6)
+   {
+      ESP_LOGD (TAG, "Closing to reconnect for IPv6");
       handle->close = 1;        // Reconnect as IPv6 (we don't know for TLS so reconnect anyway)
+   }
 }
 
 // Subscribe (return is non null error message if failed)
@@ -874,6 +877,7 @@ client_task (void *pvParameters)
          ESP_LOGE (TAG, "Connected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          hwrite (handle, handle->connect, handle->connectlen);
          lwmqtt_loop (handle);
+         ESP_LOGE (TAG, "Disonnected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          handle->backoff = 0;
          handle->dnsipv6 = 0;
          handle->ipv6 = 0;
