@@ -304,7 +304,7 @@ lwmqtt_server (lwmqtt_server_config_t * config)
        (handle, config->ca_cert_ref, config->ca_cert_bytes, config->ca_cert_buf, config->server_cert_ref, config->server_cert_bytes,
         config->server_cert_buf, config->server_key_ref, config->server_key_bytes, config->server_key_buf))
       return handle_free (handle);
-   handle->running = 1;
+   handle->Running = 1;
    TaskHandle_t task_id = NULL;
    xTaskCreate (listen_task, "mqtt-listen", 3 * 1024, (void *) handle, 2, &task_id);
    return handle;
@@ -320,7 +320,7 @@ lwmqtt_end (lwmqtt_t * handle)
       return;
    if ((*handle)->running)
    {
-      ESP_LOGD (TAG, "Ending");
+      ESP_LOGE (TAG, "Ending");
       (*handle)->running = 0;
    }
    *handle = NULL;
@@ -877,7 +877,7 @@ client_task (void *pvParameters)
          ESP_LOGE (TAG, "Connected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          hwrite (handle, handle->connect, handle->connectlen);
          lwmqtt_loop (handle);
-         ESP_LOGE (TAG, "Disonnected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
+         ESP_LOGE (TAG, "Disconnected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          handle->backoff = 0;
          handle->dnsipv6 = 0;
          handle->ipv6 = 0;
