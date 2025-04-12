@@ -874,12 +874,10 @@ client_task (void *pvParameters)
             handle->callback (handle->arg, NULL, 0, NULL);
       } else
       {
-         ESP_LOGE (TAG, "%p Connected %d%s", hostname, port,
-                   handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
+         ESP_LOGE (TAG, "Connected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          hwrite (handle, handle->connect, handle->connectlen);
          lwmqtt_loop (handle);
-         ESP_LOGE (TAG, "%p Disconnected %d%s", hostname, port,
-                   handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
+         ESP_LOGE (TAG, "Disconnected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          handle->backoff = 0;
          handle->dnsipv6 = 0;
          handle->ipv6 = 0;
