@@ -4757,7 +4757,7 @@ revk_mqtt_close (const char *reason)
             jo_string (j, "reason", restart_reason);
          revk_state_clients (NULL, &j, 1 << client);
          lwmqtt_end (&mqtt_client[client]);
-         ESP_LOGI (TAG, "MQTT%d Closed", client);
+         ESP_LOGE (TAG, "MQTT%d Closed", client);
          xEventGroupWaitBits (revk_group, GROUP_MQTT_DOWN << client, false, true, 2 * 1000 / portTICK_PERIOD_MS);
       }
    ESP_LOGI (TAG, "MQTT Closed");
