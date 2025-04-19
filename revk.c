@@ -17,6 +17,9 @@ static const char __attribute__((unused)) * TAG = "RevK";
 #ifndef	CONFIG_REVK_APMODE
 #undef	CONFIG_REVK_APDNS       // Bodge
 #endif
+#ifndef	CONFIG_REVK_MATTER
+#undef	CONFIG_MDNS_MAX_INTERFACES
+#endif
 
 #ifndef CONFIG_IDF_TARGET_ESP8266
 #include "esp_mac.h"
@@ -39,7 +42,7 @@ static const char __attribute__((unused)) * TAG = "RevK";
 #include <esp_mesh.h>
 #include "freertos/semphr.h"
 #endif
-#ifdef  CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES
+#ifdef  CONFIG_MDNS_MAX_INTERFACES
 #include "mdns.h"
 #endif
 #ifdef  CONFIG_NIMBLE_ENABLED
@@ -2593,7 +2596,7 @@ revk_start (void)
    freez (id);
 #ifdef  CONFIG_REVK_APMODE
 #ifndef	CONFIG_REVK_MATTER
-#ifdef  CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES
+#ifdef  CONFIG_MDNS_MAX_INTERFACES
    REVK_ERR_CHECK (mdns_init ());
    mdns_hostname_set (hostname);
    mdns_instance_name_set (appname);
@@ -3008,7 +3011,7 @@ revk_web_settings_add (httpd_handle_t webserver)
       };
       REVK_ERR_CHECK (httpd_register_uri_handler (webserver, &uri));
    }
-#ifdef  CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES
+#ifdef  CONFIG_MDNS_MAX_INTERFACES
    mdns_service_add (NULL, "_http", "_tcp", 80, NULL, 0);
 #endif
    return 0;
@@ -3624,7 +3627,7 @@ revk_web_settings (httpd_req_t * req)
             revk_web_setting_s (req, "Passphrase", "wifipass", wifipass, "WiFi pass", NULL);
             if (!revk_link_down ())
                revk_web_setting_s (req, "Hostname", "hostname", hostname, NULL,
-#ifdef  CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES
+#ifdef  CONFIG_MDNS_MAX_INTERFACES
                                    ".local"
 #else
                                    ""
