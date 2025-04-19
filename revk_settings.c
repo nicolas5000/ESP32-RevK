@@ -665,6 +665,23 @@ main (int argc, const char *argv[])
       if (hasoctet)
          fprintf (H, " REVK_SETTINGS_OCTET,\n");
       fprintf (H, "};\n");
+      {
+         for (d = defs; d; d = d->next)
+            if (d->name)
+            {
+               fprintf (H, "#define REVK_SETTINGS_");
+               const char *p = d->name;
+               while (*p)
+               {
+                  if (isalnum (*p))
+                     putc (toupper (*p), H);
+                  else
+                     putc ('_', H);
+                  p++;
+               }
+               fprintf (H, "\n");
+            }
+      }
       if (hasenum)
          fprintf (H, "#define	REVK_SETTINGS_HAS_ENUM\n");
       if (hasold)

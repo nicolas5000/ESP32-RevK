@@ -3589,7 +3589,12 @@ revk_web_settings (httpd_req_t * req)
                revk_web_send (req, "<br>");
             char temp[20];
             sprintf (temp, "%d", p);
-            addpage (p, temp);
+#ifdef	REVK_SETTINGS_TAB
+            if (*tab[p - 1])
+               addpage (p, tab[p - 1]);
+            else
+#endif
+               addpage (p, temp);
          }
 #endif
          if (!revk_link_down () && *otahost && page == -1)
@@ -3626,7 +3631,7 @@ revk_web_settings (httpd_req_t * req)
             revk_web_setting_s (req, "SSID", "wifissid", wifissid, "WiFi name", NULL);
             revk_web_setting_s (req, "Passphrase", "wifipass", wifipass, "WiFi pass", NULL);
             if (!revk_link_down ())
-               revk_web_setting_s (req, "Hostname", "hostname", hostname, NULL,NULL);
+               revk_web_setting_s (req, "Hostname", "hostname", hostname, NULL, NULL);
             if (!shutdown)
                revk_web_send (req, "<tr id=_found hidden><td>Found:</td><td colspan=2 id=_list></td></tr>");
          }
