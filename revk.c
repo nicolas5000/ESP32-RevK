@@ -17,7 +17,7 @@ static const char __attribute__((unused)) * TAG = "RevK";
 #ifndef	CONFIG_REVK_APMODE
 #undef	CONFIG_REVK_APDNS       // Bodge
 #endif
-#ifndef	CONFIG_REVK_MATTER
+#ifdef	CONFIG_REVK_MATTER
 #undef	CONFIG_MDNS_MAX_INTERFACES
 #endif
 
