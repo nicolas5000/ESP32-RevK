@@ -5276,7 +5276,7 @@ revk_ipv4 (char ipv4[16])
       return NULL;
    *ipv4 = 0;
    esp_netif_ip_info_t ip = { 0 };
-   if (esp_netif_get_ip_info (sta_netif, &ip))
+   if (esp_netif_get_ip_info (sta_netif, &ip) || !ip.ip)
       return NULL;
    snprintf (ipv4, 16, IPSTR, IP2STR (&ip.ip));
    return ipv4;
