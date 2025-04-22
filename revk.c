@@ -3515,7 +3515,7 @@ revk_web_settings (httpd_req_t * req)
                      }
                   }
                   if (!ok)
-                     revk_web_send (req, "WiFi did not connect, try again.");
+                     revk_web_send (req, "WiFi did not connect <tt>%s</tt>, try again.", ssid);
                }
             }
          } else
