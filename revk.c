@@ -3509,13 +3509,13 @@ revk_web_settings (httpd_req_t * req)
                      char ip[16];
                      if (revk_ipv4 (ip))
                      {
-                        revk_web_send (req, "WiFi connected <b>%s</b>.", ip);
+                        revk_web_send (req, "WiFi connected <big><b>%s</b></big>.", ip);
                         ok = 2;
                         break;
                      }
                   }
                   if (!ok)
-                     revk_web_send (req, "WiFi did not connect <tt>%s</tt>, try again.", ssid);
+                     revk_web_send (req, "WiFi did not connect <big><tt>%s</tt></big>, try again.", ssid);
                }
             }
          } else
