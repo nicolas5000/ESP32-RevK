@@ -5568,7 +5568,7 @@ revk_gfx_init (uint32_t secs)
       }
       if (ap.rssi)
       {
-         sprintf (temp, "Chan: %d RSSI %d", ap.primary, ap.rssi);
+         sprintf (temp, "Chan %d RSSI %d", ap.primary, ap.rssi);
          t (2, s, temp);
          l ();
       }
