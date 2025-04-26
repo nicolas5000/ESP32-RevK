@@ -5468,4 +5468,97 @@ revk_mqtt_unsub (int client, const char *topic)
       lwmqtt_unsubscribe (mqtt_client[client], topic);
    ESP_LOGD (TAG, "Deregister MQTT %s", topic);
 }
+
+#if	defined(CONFIG_GFX_WIDTH) && ! defined(CONFIG_GFX_BUILD_SUFFIX_GFXNONE) // GFX installed
+// Messy externs
+extern void gfx_lock (void);
+extern void gfx_clear (uint8_t);
+extern void gfx_unlock (void);
+extern void gfx_text (uint8_t flags, uint8_t size, const char *fmt, ...);
+extern uint16_t gfx_width (void);
+extern uint16_t gfx_height (void);
+extern void gfx_text_size (uint8_t flags, uint8_t size, const char *, int16_t * w, int16_t * h);
+void
+revk_gfx_init (uint32_t secs)
+{                               // Display info page, depends on IP connected, and AP mode
+   uint16_t w = gfx_width ();
+   uint16_t s = gfx_height () / 100 ? : 1;
+   if (w / 100 < s)
+      s = w / 100;
+   void t (uint8_t f, uint16_t s, const char *txt)
+   {
+      int16_t W = 0;
+      gfx_text_size (f, s, txt, &W, NULL);
+      if (W > w)
+         s = W / w ? : 1;
+      gfx_text (f, s, "%s", txt);
+   }
+   void l (void)
+   {
+      gfx_text (0, s, " ");
+   }
+   uint32_t start = 0,
+      up;
+   uint8_t len;
+   char temp[40];
+   while ((up = uptime ()) - start < secs || !start)
+   {
+      gfx_lock ();
+      gfx_clear (0);
+      t (1, s + 2, appname);
+      t (1, s, hostname);
+      l ();
+      wifi_ap_record_t ap = {
+      };
+      esp_wifi_sta_get_ap_info (&ap);
+      if (revk_ipv4 (temp))
+      {
+         if (!start)
+            start = up;
+         t (1, s, "WiFi");
+         t (3, s, (char *) ap.ssid);
+         l ();
+         t (1, s, "IP");
+         t (2, s, temp);
+         l ();
+      } else if (ap_netif && (len = revk_wifi_is_ap (temp)))
+      {
+         temp[32] = 0;
+         t (1, s, "Join WiFi");
+         t (3, s, temp);
+         l ();
+         esp_netif_ip_info_t ip;
+         if (!esp_netif_get_ip_info (ap_netif, &ip) && ip.ip.addr)
+         {
+            t (1, s, "Web page");
+            sprintf (temp, "http://" IPSTR "/", IP2STR (&ip.ip));
+            t (3, s, temp);
+            l ();
+         }
+      } else
+      {
+         t (1, s, "WiFi");
+         t (3, s, wifissid);
+         l ();
+         t (6, s, "Trying...");
+         l ();
+      }
+      if (ap.rssi)
+      {
+         sprintf (temp, "Chan: %d RSSI %d", ap.primary, ap.rssi);
+         t (2, s, temp);
+         l ();
+      }
+      if (s > 1 && revk_ipv6 (temp))
+      {
+         t (1, s, "IP");
+         t (2, s, temp);
+         l ();
+      }
+      gfx_unlock ();
+      sleep (1);
+   }
+}
+#endif
+
 #endif
