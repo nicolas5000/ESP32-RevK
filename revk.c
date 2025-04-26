@@ -5500,37 +5500,45 @@ revk_gfx_init (uint32_t secs)
    uint32_t start = 0,
       up;
    uint8_t len;
-   char temp[40];
+   char ipv4[16];
+   char ipv6[40];
+   char apn[33];
+   char temp[50];
+   uint8_t status = 0xFF;
    while ((up = uptime ()) - start < secs || !start)
    {
+      uint8_t newstatus = 0;
+      if (revk_ipv4 (ipv4))
+         newstatus |= 1;
+      if (revk_ipv6 (ipv6))
+         newstatus |= 2;
+      if ((len = revk_wifi_is_ap (apn)))
+         newstatus |= 4;
+
+      wifi_ap_record_t ap = {
+      };
+      esp_wifi_sta_get_ap_info (&ap);
+      esp_netif_ip_info_t ip;
+      if (ap_netif && !esp_netif_get_ip_info (ap_netif, &ip) && ip.ip.addr)
+         newstatus |= 8;
+      if (newstatus == status)
+      {
+         sleep (1);
+         continue;
+      }
+      status = newstatus;
       gfx_lock ();
       gfx_clear (0);
       t (1, s + 2, appname);
       t (1, s, hostname);
       l ();
-      wifi_ap_record_t ap = {
-      };
-      esp_wifi_sta_get_ap_info (&ap);
-      if (revk_ipv4 (temp))
-      {
-         if (!start)
-            start = up;
-         t (1, s, "WiFi");
-         t (3, s, (char *) ap.ssid);
-         l ();
-         t (1, s, "IP");
-         t (2, s, temp);
-         if (revk_ipv6 (temp))
-            t (1, s, temp);
-         l ();
-      } else if (ap_netif && (len = revk_wifi_is_ap (temp)))
-      {
-         temp[32] = 0;
+      if (status & 4)
+      {                         // AP
+         apn[32] = 0;
          t (1, s, "Join WiFi");
-         t (3, s, temp);
+         t (3, s, apn);
          l ();
-         esp_netif_ip_info_t ip;
-         if (!esp_netif_get_ip_info (ap_netif, &ip) && ip.ip.addr)
+         if (status & 8)
          {
             t (1, s, "Web page");
             sprintf (temp, "http://" IPSTR "/", IP2STR (&ip.ip));
@@ -5538,12 +5546,25 @@ revk_gfx_init (uint32_t secs)
             l ();
          }
       } else
-      {
+      {                         // Client
          t (1, s, "WiFi");
          t (3, s, wifissid);
          l ();
-         t (6, s, "Trying...");
-         l ();
+         if (status & 3)
+         {
+            if (!start)
+               start = up;
+            t (1, s, "IP");
+            if (status & 1)
+               t (3, s, ipv4);
+            if (status & 2)
+               t (3, s, ipv6);
+            l ();
+         } else
+         {
+            t (6, s, "Trying...");
+            l ();
+         }
       }
       if (ap.rssi)
       {
