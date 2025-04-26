@@ -5523,7 +5523,7 @@ revk_gfx_init (uint32_t secs)
          newstatus |= 8;
       if (newstatus == status)
       {
-         sleep (1);
+         usleep (100000);
          continue;
       }
       status = newstatus;
@@ -5573,7 +5573,6 @@ revk_gfx_init (uint32_t secs)
          l ();
       }
       gfx_unlock ();
-      sleep (1);
    }
 }
 #endif
