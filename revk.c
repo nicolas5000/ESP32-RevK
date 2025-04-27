@@ -5490,7 +5490,7 @@ revk_gfx_init (uint32_t secs)
       int16_t W = 0;
       gfx_text_size (f, s, txt, &W, NULL);
       if (W > w)
-         s = W / w ? : 1;
+         s = w / (W / s) ? : 1;
       gfx_text (f, s, "%s", txt);
    }
    void l (void)
