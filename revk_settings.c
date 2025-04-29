@@ -667,7 +667,9 @@ main (int argc, const char *argv[])
       fprintf (H, "};\n");
       {
          for (d = defs; d; d = d->next)
-            if (d->name)
+            if (d->define)
+               fprintf (H, "%s\n", d->define);
+            else if (d->name)
             {
                fprintf (H, "#define REVK_SETTINGS_");
                const char *p = d->name;
