@@ -59,6 +59,7 @@ struct def_s
    char *name2;
    char *def;
    char *attributes;
+   char *enums;
    char *array;
    char config:1;               // Is CONFIG_... def
    char quoted:1;               // Is quoted def
@@ -258,39 +259,56 @@ main (int argc, const char *argv[])
                      break;
                   } else if (*p == '.' || isalpha (*p))
                   {
-                     if (!att)
-                        att = open_memstream (&d->attributes, &atts);
-                     else
-                        fputc (',', att);
-                     if (*p == '.')
-                        fputc (*p++, att);
-                     else
-                        fputc ('.', att);
-                     while (isalnum (*p))
-                        fputc (*p++, att);
-                     if (*p != '=')
-                     {
-                        fputc ('=', att);
-                        fputc ('1', att);
+                     if (!strncmp (*p == '.' ? p + 1 : p, "enums=\"", 7))
+                     {          // enums extracted separately
+                        p += (*p == '.' ? 8 : 7);
+                        size_t s;
+                        FILE *E = open_memstream (&d->enums, &s);
+                        while (*p && *p != '"')
+                        {
+                           if (*p == '\\' && p[1])
+                              fputc (*p++, E);
+                           fputc (*p++, E);
+                        }
+                        fclose (E);
+                        if (*p)
+                           p++;
                      } else
                      {
-                        fputc (*p++, att);
-                        if (*p == '"' || *p == '\'')
+                        if (!att)
+                           att = open_memstream (&d->attributes, &atts);
+                        else
+                           fputc (',', att);
+                        if (*p == '.')
+                           fputc (*p++, att);
+                        else
+                           fputc ('.', att);
+                        while (isalnum (*p))
+                           fputc (*p++, att);
+                        if (*p != '=')
                         {
-                           char c = *p++;
-                           fputc (c, att);
-                           while (*p && *p != c)
-                           {
-                              if (*p == '\\' && p[1])
-                                 fputc (*p++, att);
-                              fputc (*p++, att);
-                           }
-                           if (*p == c)
-                              p++;
-                           fputc (c, att);
+                           fputc ('=', att);
+                           fputc ('1', att);
                         } else
-                           while (*p && *p != ',' && !is_space (*p))
-                              fputc (*p++, att);
+                        {
+                           fputc (*p++, att);
+                           if (*p == '"' || *p == '\'')
+                           {
+                              char c = *p++;
+                              fputc (c, att);
+                              while (*p && *p != c)
+                              {
+                                 if (*p == '\\' && p[1])
+                                    fputc (*p++, att);
+                                 fputc (*p++, att);
+                              }
+                              if (*p == c)
+                                 p++;
+                              fputc (c, att);
+                           } else
+                              while (*p && *p != ',' && !is_space (*p))
+                                 fputc (*p++, att);
+                        }
                      }
                      while (is_space (*p))
                         p++;
@@ -533,28 +551,34 @@ main (int argc, const char *argv[])
          fprintf (H, " uint8_t isenum:1;\n");   // 
       fprintf (H, "};\n");
 
+      void revk_settings_ (FILE * F, const char *p)
+      {
+         fprintf (F, "REVK_SETTINGS_");
+         while (*p)
+         {
+            if (isalnum (*p))
+               putc (toupper (*p), F);
+            else
+               putc ('_', F);
+            p++;
+         }
+      }
+
       if (hasenum)
          for (d = defs; d; d = d->next)
             if (d->type && !strcmp (d->type, "enum"))
             {                   // Create local enums
-               const char *e = NULL;
-               if (!d->attributes || !(e = strstr (d->attributes, ".enums=\"")))
+               if (!d->enums)
                   errx (1, "enum needs .enums=\"...\"");
-               e += 8;
+               const char *e = d->enums;
                int n = 0;
+               fprintf (H, "extern const char ");
+               revk_settings_ (H, d->name);
+               fprintf (H, "_ENUMS[];\n");
                fprintf (H, "enum {\n");
                while (*e && *e != '"')
                {
-                  fprintf (H, " REVK_SETTINGS_");
-                  const char *p = d->name;
-                  while (*p)
-                  {
-                     if (isalnum (*p))
-                        putc (toupper (*p), H);
-                     else
-                        putc ('_', H);
-                     p++;
-                  }
+                  revk_settings_ (H, d->name);
                   putc ('_', H);
                   while (*e && *e != ',' && *e != '"')
                   {
@@ -671,16 +695,8 @@ main (int argc, const char *argv[])
                fprintf (H, "%s\n", d->define);
             else if (d->name)
             {
-               fprintf (H, "#define REVK_SETTINGS_");
-               const char *p = d->name;
-               while (*p)
-               {
-                  if (isalnum (*p))
-                     putc (toupper (*p), H);
-                  else
-                     putc ('_', H);
-                  p++;
-               }
+               fprintf (H, "#define ");
+               revk_settings_ (H, d->name);
                fprintf (H, "\n");
             }
       }
@@ -825,6 +841,12 @@ main (int argc, const char *argv[])
                   fprintf (C, ",.fix=1");
                fprintf (C, ",.set=1,.flags=\"- ~↓↕⇕\"");
             }
+            if (d->enums)
+            {
+               fprintf (C, ",.enums=");
+               revk_settings_ (C, d->name);
+               fprintf (C, "_ENUMS");
+            }
             if (d->attributes)
                fprintf (C, ",%s", d->attributes);
             fprintf (C, "},\n");
@@ -859,6 +881,12 @@ main (int argc, const char *argv[])
             else
                typeinit (C, d->type);
             fprintf (C, ";\n");
+            if (d->type && !strcmp (d->type, "enum"))
+            {                   // Create local enums
+               fprintf (C, "const char ");
+               revk_settings_ (C, d->name);
+               fprintf (C, "_ENUMS[]=\"%s\";\n", d->enums);
+            }
          }
       // Final includes
       for (d = defs; d; d = d->next)
