@@ -20,8 +20,6 @@ blob	ota.cert	CONFIG_REVK_OTACERT	.revk	.base64	// OTA cert of otahost
 
 bit	dark					.revk .live			// Default LED off
 
-enum	test					.enums="1,2,3"		// TODO TEST
-
 s	ntphost		CONFIG_REVK_NTPHOST	.revk			// NTP host
 s	tz		CONFIG_REVK_TZ		.revk	.hide		// Timezone (<a href='https://gist.github.com/alwynallan/24d96091655391107939' target=_blank>info</a>)
 u32	watchdogtime	CONFIG_REVK_WATCHDOG	.revk			// Watchdog (seconds)
