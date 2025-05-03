@@ -4350,9 +4350,9 @@ ota_task (void *pvParameters)
                   if ((err = REVK_ERR_CHECK (esp_ota_write (ota_handle, buf, len))))
                      break;
                   if (!ota_data)
-                     revk_restart (10, "OTA Download started");
+                     revk_restart (10, "OTA Started");
                   else if (ota_data < ota_size / 2 && (ota_data + len) >= ota_size / 2)
-                     revk_restart (10, "OTA Download progress");
+                     revk_restart (10, "OTA Progress");
                   ota_data += len;
                   now = uptime ();
                   ota_percent = ota_data * 100 / ota_size;
@@ -4377,7 +4377,7 @@ ota_task (void *pvParameters)
                jo_string (j, "complete", ota_partition->label);
                revk_info_clients ("upgrade", &j, -1);
                esp_ota_set_boot_partition (ota_partition);
-               revk_restart (3, "OTA Download complete");
+               revk_restart (3, "OTA Complete");
             } else
             {
                revk_restart (3, err == ESP_ERR_OTA_VALIDATE_FAILED ? "OTA Validation failed" : "OTA Failed");
