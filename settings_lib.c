@@ -1843,7 +1843,7 @@ revk_settings_store (jo_t j, const char **locationp, uint8_t flags)
    err = scan (0, -1);
    if (reload)
    {
-      revk_restart (3, "Settings changed (%s)", reload);
+      revk_restart (3, "Settings changed\n(%s)", reload);
       free (reload);
    }
    if (locationp)
