@@ -4578,6 +4578,7 @@ revk_upgrade (const char *target, jo_t j)
       esp_bt_controller_disable ();     // Kill bluetooth during download
       esp_wifi_set_ps (WIFI_PS_NONE);   // Full wifi
 #endif
+      sleep (1);
    }
    char *url = revk_upgrade_url (val, "bin");
    ota_task_id = revk_task ("OTA", ota_task, url, 5);
