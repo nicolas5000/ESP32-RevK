@@ -43,11 +43,13 @@ ha_config_opts (const char *config, ha_config_t h)
       addpath ("cmd_t", hacmd, h.cmd);
    if (!strcmp (config, "trigger"))
    {
+      char *t = revk_topic (h.stat, NULL, NULL);
       jo_string (j, "automation_type", config);
       jo_string (j, "type", "button_short_press");
       jo_string (j, "subtype", "button_1");
-      jo_string (j, "topic", h.stat);
+      jo_string (j, "topic", t);
       jo_string (j, "payload", h.field);
+      free (t);
    } else if (h.stat || h.field)
    {
       addpath ("stat_t", hastatus, h.stat);
