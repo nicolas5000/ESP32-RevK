@@ -47,7 +47,7 @@ ha_config_opts (const char *config, ha_config_t h)
       jo_string (j, "type", "button_short_press");
       jo_string (j, "subtype", "button_1");
       if (h.stat)
-         jo_string (j, "topic", "%s/%s", hastatus, h.stat);
+         jo_stringf (j, "topic", "%s/%s", hastatus, h.stat);
       if (h.field)
          jo_string (j, "payload", h.field);
    } else if (h.stat || h.field)
