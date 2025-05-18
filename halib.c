@@ -45,7 +45,7 @@ ha_config_opts (const char *config, ha_config_t h)
    if (!strcmp (config, "trigger"))
    {
       jo_string (j, "automation_type", config);
-      jo_string (j, "type", "button_short_press");
+      jo_string (j, "type", h.type ? : "button_short_press");
       jo_string (j, "subtype", "button_1");
       if (h.stat)
          jo_stringf (j, "topic", "%s/%s", hainfo, h.stat);
