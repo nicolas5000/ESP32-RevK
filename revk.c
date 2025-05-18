@@ -3630,7 +3630,9 @@ revk_web_settings (httpd_req_t * req)
                revk_web_setting_info (req, "Set these to connect to your network/internet");
             revk_web_setting_s (req, "SSID", "wifissid", wifissid, "WiFi name", NULL);
             revk_web_setting_s (req, "Passphrase", "wifipass", wifipass, "WiFi pass", NULL);
+#ifndef  CONFIG_MDNS_MAX_INTERFACES
             if (!revk_link_down ())
+#endif
                revk_web_setting_s (req, "Hostname", "hostname", hostname, NULL, NULL);
             if (!shutdown)
                revk_web_send (req, "<tr id=_found hidden><td>Found:</td><td colspan=2 id=_list></td></tr>");
