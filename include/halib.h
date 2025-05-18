@@ -21,7 +21,7 @@ typedef struct
 #define ha_config_sensor(...)  ha_config_opts("sensor",(ha_config_t){__VA_ARGS__})
 #define ha_config_switch(...)  ha_config_opts("switch",(ha_config_t){__VA_ARGS__})
 #define ha_config_light(...)  ha_config_opts("light",(ha_config_t){__VA_ARGS__})
-#define ha_config_trigger(...)  ha_config_opts("trigger",(ha_config_t){__VA_ARGS__})
+#define ha_config_trigger(...)  ha_config_opts("device_automation",(ha_config_t){__VA_ARGS__})
 const char *ha_config_opts (const char *, ha_config_t);
 
 #endif

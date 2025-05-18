@@ -42,7 +42,7 @@ ha_config_opts (const char *config, ha_config_t h)
       jo_string (j, "name", h.name);
    if (h.cmd)
       addpath ("cmd_t", hacommand, h.cmd);
-   if (!strcmp (config, "trigger"))
+   if (!strcmp (config, "device_automation"))
    {
       jo_string (j, "automation_type", config);
       jo_string (j, "type", h.type ? : "button_short_press");
