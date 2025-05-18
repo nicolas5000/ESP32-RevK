@@ -47,12 +47,12 @@ ha_config_opts (const char *config, ha_config_t h)
       jo_string (j, "platform", config);
       jo_string (j, "automation_type", "trigger");
       jo_string (j, "type", h.type ? : "button_short_press");
-      jo_string (j, "subtype", "button_1");
-      if (h.stat)
-         jo_stringf (j, "topic", "%s/%s", hainfo, h.stat);
-      if (h.field)
-         jo_string (j, "payload", h.field);
-   } else if (h.stat || h.field)
+      jo_string (j, "subtype", h.subtype ? : "button_1");
+      addpath ("topic", hainfo, h.info);
+      if (h.payload)
+         jo_string (j, "payload", h.payload);
+   }
+   if (h.stat || h.field)
    {
       addpath ("stat_t", hastate, h.stat);
       jo_stringf (j, "val_tpl", "{{value_json.%s}}", h.field ? : h.id);

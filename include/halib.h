@@ -8,10 +8,13 @@ typedef struct
    const char *id;              // tag/id no spaces
    const char *name;            // name
    const char *type;            // type
+   const char *subtype;         // sub type
    const char *unit;            // unit
    const char *stat;            // stat topic (default main status)
-   const char *cmd;             // command topic (default main status)
+   const char *cmd;             // command topic (default main command)
+   const char *info;            // info topic (default main info)
    const char *field;           // field name (default id)
+   const char *payload;         // payload
 
    const char *icon;            // icon
    uint8_t delete:1;            // deleted entry
