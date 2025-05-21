@@ -4158,7 +4158,8 @@ ap_start (void)
       if ((l = strlen (appass)) > sizeof (cfg.ap.password))
          l = sizeof (cfg.ap.password);
       memcpy (&cfg.ap.password, appass, l);
-      cfg.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+      //cfg.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+      cfg.ap.authmode = WIFI_AUTH_WPA2_WPA3_PSK;
    }
    ESP_LOGI (TAG, "AP%s config mode start %.*s", mode == WIFI_MODE_STA ? "STA" : "", cfg.ap.ssid_len, cfg.ap.ssid);
    // Make it go
