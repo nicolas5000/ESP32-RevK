@@ -1848,6 +1848,7 @@ revk_settings_store (jo_t j, const char **locationp, uint8_t flags)
    }
    if (locationp)
       *locationp = err ? location : NULL;
+   free (bitused);
    return err ? : change ? "" : NULL;
 }
 
