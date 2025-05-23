@@ -4161,7 +4161,7 @@ ap_start (void)
       //cfg.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
       cfg.ap.authmode = WIFI_AUTH_WPA2_WPA3_PSK;
    }
-   ESP_LOGI (TAG, "AP%s config mode start %.*s", mode == WIFI_MODE_STA ? "STA" : "", cfg.ap.ssid_len, cfg.ap.ssid);
+   ESP_LOGE (TAG, "AP%s config mode start %.*s", mode == WIFI_MODE_STA ? "STA" : "", cfg.ap.ssid_len, cfg.ap.ssid);
    // Make it go
    esp_wifi_set_mode (mode == WIFI_MODE_STA ? WIFI_MODE_APSTA : WIFI_MODE_AP);
    REVK_ERR_CHECK (esp_wifi_set_protocol (ESP_IF_WIFI_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N));
