@@ -1,4 +1,4 @@
-// Main control code, working with WiFi, MQTT, and managing settings and OTA Copyright Â ©2019 Adrian Kennard Andrews & Arnold Ltd
+// Main control code, working with WiFi, MQTT, and managing settings and OTA Copyright ©2019-25 Adrian Kennard Andrews & Arnold Ltd
 static const char __attribute__((unused)) * TAG = "RevK";
 
 //#define       SETTING_DEBUG
@@ -109,7 +109,7 @@ const char revk_build_suffix[] = CONFIG_REVK_BUILD_SUFFIX;
 		s(tz,CONFIG_REVK_TZ);			\
 		u32(watchdogtime,CONFIG_REVK_WATCHDOG);			\
 		s(appname,CONFIG_REVK_APPNAME);		\
-    		s(nodename,NULL);			\
+		s(nodename,NULL);			\
 		s(hostname,NULL);			\
 		p(command);				\
 		p(setting);				\
@@ -117,11 +117,11 @@ const char revk_build_suffix[] = CONFIG_REVK_BUILD_SUFFIX;
 		p(event);				\
 		p(info);				\
 		p(error);				\
-    		b(prefixapp,CONFIG_REVK_PREFIXAPP);	\
+		b(prefixapp,CONFIG_REVK_PREFIXAPP);	\
     		b(prefixhost,CONFIG_REVK_PREFIXHOST);	\
 		led(blink,3,CONFIG_REVK_BLINK);				\
-    		bdp(clientkey,NULL);			\
-    		bd(clientcert,NULL);			\
+		bdp(clientkey,NULL);			\
+		bd(clientcert,NULL);			\
 
 #define	apconfigsettings	\
 		u32(apport,CONFIG_REVK_APPORT);		\
@@ -2275,7 +2275,7 @@ gpio_ok (int8_t p)
    if (p >= 34)
       return 2;                 // Input only
    if (p == 1 || p == 3)
-      return 3 + 8;             // Serial       
+      return 3 + 8;             // Serial
    return 3;                    // Input and output
 #endif
    // ESP32 (S3)
@@ -2433,8 +2433,18 @@ revk_boot (app_callback_t * app_callback_cb)
    ESP_LOGI (TAG, "nvs_flash_init");
    nvs_flash_init ();
    ESP_LOGI (TAG, "nvs_flash_init_partition");
-   nvs_flash_init_partition (TAG);
-   ESP_LOGI (TAG, "nvs_open_from_partition");
+   esp_err_t e = nvs_flash_init_partition (TAG);
+   if (e == ESP_ERR_NVS_NO_FREE_PAGES || e == ESP_ERR_NVS_NEW_VERSION_FOUND)
+   {
+      ESP_LOGE (TAG, "NVS erase/init because %s", esp_err_to_name (e));
+      e = nvs_flash_erase_partition (TAG);
+      if (!e)
+         e = nvs_flash_init_partition (TAG);
+   }
+   if (e)
+      ESP_LOGE (TAG, "NVS error %s", esp_err_to_name (e));
+   else
+      ESP_LOGI (TAG, "nvs_open_from_partition");
    const esp_app_desc_t *app = esp_app_get_description ();
 #ifndef	CONFIG_REVK_OLD_SETTINGS
    revk_settings_load (TAG, app->project_name);
