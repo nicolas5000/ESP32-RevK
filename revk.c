@@ -3754,7 +3754,7 @@ revk_web_settings (httpd_req_t * req)
          hr ();
    }
    revk_web_send (req, "</table>");
-   if (!revk_link_down () && !shutdown && page == -1 && (!*password || loggedin))
+   if (!shutdown && page == -1 && (!*password || loggedin))
       revk_web_send (req, "<input name=_reboot type=submit value='Reboot'>");
    revk_web_send (req, "</form>");
 #ifdef CONFIG_HTTPD_WS_SUPPORT
