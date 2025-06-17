@@ -3337,18 +3337,11 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
 #endif
       )
    {                            // Numeric
-      if (s->digits)
+      if (s->hex || s->digits)
          revk_web_send (req,
                         "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' autocorrect='off' placeholder=\"%s\" style=\"font-family:monospace\" size=%d maxlength=%d>%s</td><td>%s</td></tr>",
-                        field, field, field, revk_web_safe (&qs, value), place, s->digits, s->digits, s->gpio ? " (GPIO)" :
-#ifdef	REVK_SETTINGS_HAS_UNIT
-                        s->unit ? :
-#endif
-                        "", comment);
-      else if (s->hex)
-         revk_web_send (req,
-                        "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' autocorrect='off' placeholder=\"%s\" style=\"font-family:monospace\" size=%d maxlength=%d>%s</td><td>%s</td></tr>",
-                        field, field, field, revk_web_safe (&qs, value), place, s->size * 2, s->size * 2, s->gpio ? " (GPIO)" :
+                        field, field, field, revk_web_safe (&qs, value), place, s->digits ? : s->size * 2,
+                        s->digits ? : s->size * 2, s->gpio ? " (GPIO)" :
 #ifdef	REVK_SETTINGS_HAS_UNIT
                         s->unit ? :
 #endif
