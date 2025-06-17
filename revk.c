@@ -3345,7 +3345,7 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
                         s->unit ? :
 #endif
                         "", comment);
-      if (s->hex)
+      else if (s->hex)
          revk_web_send (req,
                         "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' autocorrect='off' placeholder=\"%s\" style=\"font-family:monospace\" size=%d maxlength=%d>%s</td><td>%s</td></tr>",
                         field, field, field, revk_web_safe (&qs, value), place, s->size * 2, s->size * 2, s->gpio ? " (GPIO)" :
