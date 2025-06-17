@@ -3389,7 +3389,7 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
    {
       int w = s->size;
       if (s->hex)
-         w * = 2;
+         w *= 2;
       else if (s->base32)
          w = (w * 8 + 4) / 5;
       else if (s->base64)
