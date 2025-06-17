@@ -3388,14 +3388,14 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
    if (s->type == REVK_SETTINGS_STRING || s->base64 || s->base32 || s->hex)
    {
       int w = s->size;
-      if (w)
-         w--;                   // Includes null
       if (s->hex)
-         w *= 2;
-      if (s->base32)
+         w * = 2;
+      else if (s->base32)
          w = (w * 8 + 4) / 5;
-      if (s->base64)
+      else if (s->base64)
          w = (w * 8 + 5) / 6;
+      else
+         w--;                   // Lose the null
       if (w)                    // Text (fixed)
          revk_web_send (req,
                         "<td nowrap><input %smaxlength=%d size=%d id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' size=40 autocorrect='off' placeholder=\"%s\"></td><td>%s</td></tr>",
