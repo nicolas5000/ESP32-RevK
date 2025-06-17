@@ -3337,6 +3337,14 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
 #endif
       )
    {                            // Numeric
+      if (s->digits)
+         revk_web_send (req,
+                        "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' autocorrect='off' placeholder=\"%s\" style=\"font-family:monospace\" size=%d maxlength=%d>%s</td><td>%s</td></tr>",
+                        field, field, field, revk_web_safe (&qs, value), place, s->digits, s->digits, s->gpio ? " (GPIO)" :
+#ifdef	REVK_SETTINGS_HAS_UNIT
+                        s->unit ? :
+#endif
+                        "", comment);
       if (s->hex)
          revk_web_send (req,
                         "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' autocorrect='off' placeholder=\"%s\" style=\"font-family:monospace\" size=%d maxlength=%d>%s</td><td>%s</td></tr>",
@@ -3400,7 +3408,7 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
          revk_web_send (req,
                         "<td nowrap><input %smaxlength=%d size=%d id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' size=40 autocorrect='off' placeholder=\"%s\"></td><td>%s</td></tr>",
                         (s->base64 || s->base32
-                         || s->hex) ? "style=\"font-family:monospace\" " : "", w + 1, w < 20 ? w : 20, field, field, field,
+                         || s->hex) ? "style=\"font-family:monospace\" " : "", w, w < 20 ? w + 1 : 20, field, field, field,
                         revk_web_safe (&qs, value), place, comment);
       else                      // Text (variable)
          revk_web_send (req,
