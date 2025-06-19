@@ -1805,12 +1805,12 @@ revk_blinker (void)
    // Updated LED every 10th second
    if (tick < on)
    {
-      uint8_t scale = 255 * (tick + 1) / on;
+      uint8_t scale = 255 * (tick + 1) / (on ? : 1);
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
          (scale * (rgb & 0xFF) / 255) + (rgb & 0x7F000000) + 0x80000000;;
-   } else if (off)
+   } else
    {
-      uint8_t scale = 255 * (on + off - tick - 1) / off;
+      uint8_t scale = 255 * (on + off - tick - 1) / (off ? : 1);
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
          (scale * (rgb & 0xFF) / 255);
    }
