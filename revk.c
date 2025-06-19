@@ -1790,8 +1790,8 @@ revk_blinker (void)
       on = off = (revk_link_down ()? 3 : 6);
 #endif
    if (!off)
-      off = 1;
-   if (++tick >= on + off)
+      tick = on - 1;            // Permanent on
+   else if (++tick >= on + off)
    {                            // End of cycle, work out next colour
       tick = 0;
       static const char *c = "",
