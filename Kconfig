@@ -45,6 +45,12 @@ menu "RevK"
         help
 		One or more (space separated) LED GPIOs
 
+	config REVK_BLINK_STARTUP
+        bool "Blink Startup"
+        default y
+        help
+		Initial LED is green at startup
+
 	config REVK_LED_STRIP
 	bool "LED strip support functions"
 	default n

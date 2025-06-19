@@ -1771,8 +1771,10 @@ revk_blinker (void)
 {                               // LED blinking controls, in style of revk_rgb() but bit 30 is set if not black, and bit 31 is set for blink cycle
    if (b.die)
       return 0;
+#ifdef	CONFIG_REVK_BLINK_STARTUP
    if (uptime () < 2)
       return 0x4C00FF00;        // Green startup
+#endif
    if (b.factorycount == 1)
       return 0x7CFFFF00;        // Factory reset
    if (b.factorycount == 2)
