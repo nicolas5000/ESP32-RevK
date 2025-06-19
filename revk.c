@@ -3650,9 +3650,9 @@ revk_web_settings (httpd_req_t * req)
             if (!shutdown)
                revk_web_send (req, "<tr id=_found hidden><td>Found:</td><td colspan=2 id=_list></td></tr>");
          }
+         hr ();
          if (!revk_link_down ())
          {
-            hr ();
             revk_web_setting_title (req, "MQTT settings");
             if (!*mqtthost[0])
                revk_web_setting_info (req, "Only needed if you have an MQTT server");
@@ -3757,7 +3757,11 @@ revk_web_settings (httpd_req_t * req)
    }
    revk_web_send (req, "</table>");
    if (!shutdown && page == -1 && (!*password || loggedin))
+   {
+      if (revk_link_down ())
+         revk_web_send (req, "<input name=_save type=submit value='Save'>");
       revk_web_send (req, "<input name=_reboot type=submit value='Reboot'>");
+   }
    revk_web_send (req, "</form>");
 #ifdef CONFIG_HTTPD_WS_SUPPORT
    // A tad clunky, could be improved.
