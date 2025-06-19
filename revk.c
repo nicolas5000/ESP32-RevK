@@ -1784,14 +1784,14 @@ revk_blinker (void)
    static uint32_t rgb = 0;     // Current colour (2 bits per)
    static uint8_t tick = 255;   // Blink cycle counter
    uint8_t on = blink_on,       // Current on/off times
-      off = blink_off,
-      fade = ((on > off ? off : on) ? : 1);
-   if (fade > 5)
-      fade = 5;                 // Max fade up/down time
+      off = blink_off;
 #if     defined(CONFIG_REVK_WIFI) || defined(CONFIG_REVK_MQTT)
    if (!on && !off)
       on = off = (revk_link_down ()? 3 : 6);
 #endif
+   uint8_t fade = ((on > off ? off : on) ? : 1);
+   if (fade > 5)
+      fade = 5;                 // Max fade up/down time
    if (++tick >= on + off)
    {                            // End of cycle, work out next colour
       tick = 0;
