@@ -1815,9 +1815,9 @@ revk_blinker (void)
          (scale * (rgb & 0xFF) / 255) + (rgb & 0x7F000000) + 0x80000000;;
    } else
    {
-      uint8_t scale = 255;
+      uint8_t scale = 0;
       if (tick - on < fade)
-         scale = 255 * (tick + 1 - on) / fade;
+         scale = 255 - 255 * (tick - on) / fade;
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
          (scale * (rgb & 0xFF) / 255);
    }
