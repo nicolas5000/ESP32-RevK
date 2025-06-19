@@ -1786,8 +1786,8 @@ revk_blinker (void)
    uint8_t on = blink_on,       // Current on/off times
       off = blink_off,
       fade = ((on > off ? off : on) ? : 1);
-   if (fade < 3)
-      fade = 3;
+   if (fade < 5)
+      fade = 5;                 // Max fade up/down time
 #if     defined(CONFIG_REVK_WIFI) || defined(CONFIG_REVK_MQTT)
    if (!on && !off)
       on = off = (revk_link_down ()? 3 : 6);
