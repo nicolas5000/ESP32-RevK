@@ -1808,7 +1808,7 @@ revk_blinker (void)
       uint8_t scale = 255 * (tick + 1) / on;
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
          (scale * (rgb & 0xFF) / 255) + (rgb & 0x7F000000) + 0x80000000;;
-   } else
+   } else if (off)
    {
       uint8_t scale = 255 * (on + off - tick - 1) / off;
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
