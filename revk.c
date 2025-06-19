@@ -1792,6 +1792,8 @@ revk_blinker (void)
    if (!on && !off)
       on = off = (revk_link_down ()? 3 : 6);
 #endif
+   if (uptime () < 5)
+      ESP_LOGE (TAG, "tick %d on %d off %d fade %d", tick, on, off, fade);
    if (++tick >= on + off)
    {                            // End of cycle, work out next colour
       tick = 0;
