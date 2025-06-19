@@ -1784,7 +1784,10 @@ revk_blinker (void)
    static uint32_t rgb = 0;     // Current colour (2 bits per)
    static uint8_t tick = 255;   // Blink cycle counter
    uint8_t on = blink_on,       // Current on/off times
-      off = blink_off;
+      off = blink_off,
+      fade = ((on > off ? off : on) ? : 1);
+   if (fade < 3)
+      fade = 3;
 #if     defined(CONFIG_REVK_WIFI) || defined(CONFIG_REVK_MQTT)
    if (!on && !off)
       on = off = (revk_link_down ()? 3 : 6);
@@ -1805,12 +1808,16 @@ revk_blinker (void)
    // Updated LED every 10th second
    if (tick < on)
    {
-      uint8_t scale = 255 * (tick + 1) / (on ? : 1);
+      uint8_t scale = 255;
+      if (tick < fade)
+         scale = 255 * (tick + 1) / fade;
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
          (scale * (rgb & 0xFF) / 255) + (rgb & 0x7F000000) + 0x80000000;;
    } else
    {
-      uint8_t scale = 255 * (on + off - tick - 1) / (off ? : 1);
+      uint8_t scale = 255;
+      if (tick - on < fade)
+         scale = 255 * (tick + 1 - on) / fade;
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
          (scale * (rgb & 0xFF) / 255);
    }
