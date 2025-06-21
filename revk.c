@@ -1921,9 +1921,6 @@ task (void *pvParameters)
       else if (otadays)
          ota_check = 86400 * otadays + (esp_random () % 3600);  // Min periodic check
    }
-#ifdef	CONFIG_REVK_BLINK_LIB
-   revk_blink_init ();
-#endif
    revk_gpio_input (factorygpio);
    b.factorywas = revk_gpio_get (factorygpio);
    while (1)
@@ -2600,6 +2597,9 @@ revk_start (void)
 #endif
 #ifdef	CONFIG_REVK_MESH
    mesh_init ();
+#endif
+#ifdef	CONFIG_REVK_BLINK_LIB
+   revk_blink_init ();
 #endif
    /* DHCP */
    char *id = NULL;
