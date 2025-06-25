@@ -2325,7 +2325,7 @@ gpio_ok (int8_t p)
 void
 revk_boot (app_callback_t * app_callback_cb)
 {                               /* Start the revk task, use __FILE__ and __DATE__ and __TIME__ to set task name and version ID */
-#if	CONFIG_REVK_GPIO_POWER != ""
+#if	CONFIG_REVK_GPIO_POWER >= 0
    gpio_set_level (CONFIG_REVK_GPIO_POWER, 1);
    gpio_set_direction (CONFIG_REVK_GPIO_POWER, GPIO_MODE_OUTPUT);
 
@@ -2341,7 +2341,7 @@ revk_boot (app_callback_t * app_callback_cb)
       gpio_config_t u = {.pull_up_en = 1,.mode = GPIO_MODE_DISABLE };
       gpio_config_t d = {.pull_down_en = 1,.mode = GPIO_MODE_DISABLE };
       for (uint8_t p = 0; p <= 48; p++)
-#if	CONFIG_REVK_GPIO_POWER != ""
+#if	CONFIG_REVK_GPIO_POWER >= 0
          if (p != CONFIG_REVK_GPIO_POWER)
 #endif
             if (gpio_ok (p) == 3)       // Input and output, not serial

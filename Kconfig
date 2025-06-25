@@ -19,10 +19,10 @@ menu "RevK"
 		Use (appname/)hostname as primary MQTT topic followed by the usual prefix (command/status, etc)
 
 	config REVK_GPIO_POWER
-	string	"GPIO for power"
-	default ""
+	int	"GPIO for power"
+	default -1
 	help
-		GPIO to be set high at start of code to maintain power on
+		GPIO to be set high at start of code to maintain power on (-1 for not used)
 
 	config REVK_BLINK_SUPPORT
 	bool "LED blinking support"
