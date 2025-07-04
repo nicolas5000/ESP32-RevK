@@ -70,7 +70,7 @@ main (int argc, const char *argv[])
             printf ("Empty chip, ready to flash\n");
             return 0;
          }
-         if (strstr (line, "rst:0x3 (RTC_SW_SYS_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)\n"))
+         if (strstr (line, "rst:0x3 (RTC_SW_SYS_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)"))
          {
             printf ("Resetting, re-flash.\n");
             return 0;
