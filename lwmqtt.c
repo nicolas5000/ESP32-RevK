@@ -304,7 +304,7 @@ lwmqtt_server (lwmqtt_server_config_t * config)
        (handle, config->ca_cert_ref, config->ca_cert_bytes, config->ca_cert_buf, config->server_cert_ref, config->server_cert_bytes,
         config->server_cert_buf, config->server_key_ref, config->server_key_bytes, config->server_key_buf))
       return handle_free (handle);
-   handle->running = 1;
+   handle->Running = 1;
    TaskHandle_t task_id = NULL;
    xTaskCreate (listen_task, "mqtt-listen", 3 * 1024, (void *) handle, 2, &task_id);
    return handle;
@@ -320,7 +320,7 @@ lwmqtt_end (lwmqtt_t * handle)
       return;
    if ((*handle)->running)
    {
-      ESP_LOGD (TAG, "Ending");
+      ESP_LOGE (TAG, "Ending");
       (*handle)->running = 0;
    }
    *handle = NULL;
@@ -344,7 +344,10 @@ lwmqtt_reconnect6 (lwmqtt_t handle)
    if (!handle)
       return;
    if (handle->running && (handle->dnsipv6 || handle->tls) && !handle->ipv6)
+   {
+      ESP_LOGD (TAG, "Closing to reconnect for IPv6");
       handle->close = 1;        // Reconnect as IPv6 (we don't know for TLS so reconnect anyway)
+   }
 }
 
 // Subscribe (return is non null error message if failed)
@@ -362,13 +365,15 @@ lwmqtt_subscribeub (lwmqtt_t handle, const char *topic, char unsubscribe)
       int mlen = 2 + 2 + tlen;
       if (!unsubscribe)
          mlen++;                // QoS requested
-      if (mlen >= 128 * 128)
-         ret = "Too big";
+      if (mlen >= 65535)
+         ret = "Topic too big";
       else
       {
+         if (mlen >= 128 * 128)
+            mlen++;
          if (mlen >= 128)
-            mlen++;             // two byte len
-         mlen += 2;             // header and one byte len
+            mlen++;
+         mlen += 2;
          unsigned char *buf = mallocspi (mlen);
          if (!buf)
             ret = "Malloc";
@@ -384,7 +389,12 @@ lwmqtt_subscribeub (lwmqtt_t handle, const char *topic, char unsubscribe)
                {
                   unsigned char *p = buf;
                   *p++ = (unsubscribe ? 0xA2 : 0x82);   // subscribe/unsubscribe
-                  if (mlen > 129)
+                  if (mlen >= 128 * 128 + 3)
+                  {             // Three bytes len
+                     *p++ = (((mlen - 4) & 0x7F) | 0x80);
+                     *p++ = ((((mlen - 4) >> 7) & 0x7F) | 0x80);
+                     *p++ = ((mlen - 4) >> 14);
+                  } else if (mlen >= 128 + 2)
                   {             // Two byte len
                      *p++ = (((mlen - 3) & 0x7F) | 0x80);
                      *p++ = ((mlen - 3) >> 7);
@@ -430,10 +440,12 @@ lwmqtt_send_full (lwmqtt_t handle, int tlen, const char *topic, int plen, const 
       if (plen < 0)
          plen = strlen ((char *) payload ? : "");
       int mlen = 2 + tlen + plen;
-      if (mlen >= 128 * 128)
+      if (mlen >= 128 * 128 * 128)
          ret = "Too big";
       else
       {
+         if (mlen >= 128 * 128)
+            mlen++;
          if (mlen >= 128)
             mlen++;             // two byte len
          mlen += 2;             // header and one byte len
@@ -452,7 +464,12 @@ lwmqtt_send_full (lwmqtt_t handle, int tlen, const char *topic, int plen, const 
                {
                   unsigned char *p = buf;
                   *p++ = 0x30 + (retain ? 1 : 0);       // message
-                  if (mlen > 129)
+                  if (mlen >= 128 * 128 + 3)
+                  {             // Three bytes len
+                     *p++ = (((mlen - 4) & 0x7F) | 0x80);
+                     *p++ = ((((mlen - 4) >> 7) & 0x7F) | 0x80);
+                     *p++ = ((mlen - 4) >> 14);
+                  } else if (mlen >= 128 + 2)
                   {             // Two byte len
                      *p++ = (((mlen - 3) & 0x7F) | 0x80);
                      *p++ = ((mlen - 3) >> 7);
@@ -860,6 +877,7 @@ client_task (void *pvParameters)
          ESP_LOGE (TAG, "Connected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          hwrite (handle, handle->connect, handle->connectlen);
          lwmqtt_loop (handle);
+         ESP_LOGE (TAG, "Disconnected %s:%d%s", hostname, port, handle->ipv6 ? " (IPv6)" : handle->dnsipv6 ? " (Not IPv6)" : "");
          handle->backoff = 0;
          handle->dnsipv6 = 0;
          handle->ipv6 = 0;
@@ -1005,4 +1023,43 @@ lwmqtt_failed (lwmqtt_t handle)
    if (handle->failed)
       return -handle->failed;   // failed
    return handle->backoff;      // Trying
+}
+
+const char *
+lwmqtt_match (const char *sub, const char *topic)
+{                               // NULL if no match, else match returns at #, or start of topic if no #
+   const char *s = sub;
+   const char *t = topic;
+   if (*t == '$' && (*s == '+' || *s == '#'))
+      return NULL;              // Must not match
+   while (*s || *t)
+   {                            // scan pattern
+      if (*s == '#' && !s[1])
+         return t;              // Match rest of topic
+      if (*s == '+' && (!s[1] || s[1] == '/'))
+      {                         // Single level match
+         s++;                   // Matched to the +
+         while (*t && *t != '/')
+            t++;
+      } else
+      {                         // Check exactly
+         while (*s && *s != '/' && *t && *t != '/' && *s == *t)
+         {
+            s++;
+            t++;
+         }
+      }
+      if (!*t && s[0] == '/' && s[1] == '#' && !s[2])
+         return topic;          // A pattern ending /# matches without the parent, i.e. without the /
+      if (*s == '/' && *t == '/')
+      {                         // Matched to end of part
+         s++;
+         t++;
+         continue;
+      }
+      if (!*s && !*t)
+         return topic;
+      return NULL;
+   }
+   return NULL;
 }

@@ -1,5 +1,4 @@
-// Main control code, working with WiFi, MQTT, and managing settings and OTA Copyright ©2019 Adrian Kennard Andrews & Arnold Ltd
-
+// Main control code, working with WiFi, MQTT, and managing settings and OTA Copyright �2019-25 Adrian Kennard Andrews & Arnold Ltd
 static const char __attribute__((unused)) * TAG = "RevK";
 
 //#define       SETTING_DEBUG
@@ -19,7 +18,7 @@ static const char __attribute__((unused)) * TAG = "RevK";
 #undef	CONFIG_REVK_APDNS       // Bodge
 #endif
 #ifdef	CONFIG_REVK_MATTER
-#undef	CONFIG_MDNS_MAX_INTERFACES      // Bodge - clashes
+#undef	CONFIG_MDNS_MAX_INTERFACES
 #endif
 
 #ifndef CONFIG_IDF_TARGET_ESP8266
@@ -110,7 +109,7 @@ const char revk_build_suffix[] = CONFIG_REVK_BUILD_SUFFIX;
 		s(tz,CONFIG_REVK_TZ);			\
 		u32(watchdogtime,CONFIG_REVK_WATCHDOG);			\
 		s(appname,CONFIG_REVK_APPNAME);		\
-    		s(nodename,NULL);			\
+		s(nodename,NULL);			\
 		s(hostname,NULL);			\
 		p(command);				\
 		p(setting);				\
@@ -118,11 +117,11 @@ const char revk_build_suffix[] = CONFIG_REVK_BUILD_SUFFIX;
 		p(event);				\
 		p(info);				\
 		p(error);				\
-    		b(prefixapp,CONFIG_REVK_PREFIXAPP);	\
+		b(prefixapp,CONFIG_REVK_PREFIXAPP);	\
     		b(prefixhost,CONFIG_REVK_PREFIXHOST);	\
 		led(blink,3,CONFIG_REVK_BLINK);				\
-    		bdp(clientkey,NULL);			\
-    		bd(clientcert,NULL);			\
+		bdp(clientkey,NULL);			\
+		bd(clientcert,NULL);			\
 
 #define	apconfigsettings	\
 		u32(apport,CONFIG_REVK_APPORT);		\
@@ -265,6 +264,9 @@ static struct
    uint8_t disablewifi:1;
    uint8_t disableap:1;
    uint8_t disablesettings:1;
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+   uint8_t disableusb:1;
+#endif
 #ifdef	CONFIG_REVK_MESH
    uint8_t mesh_root_known:1;
 #endif
@@ -968,6 +970,16 @@ revk_send_subunsub (int client, const mac_t mac, uint8_t sub)
 #endif
 
 #ifdef	CONFIG_REVK_MQTT
+typedef struct mqtt_cb_s mqtt_cb_t;
+struct mqtt_cb_s
+{
+   mqtt_cb_t *next;
+   revk_mqtt_cb_t *cb;
+   void *arg;
+   char *sub;                   // malloc
+   uint8_t client;
+} *mqtt_cb = NULL;
+
 static void
 mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
 {                               // Expects to be able to write over topic
@@ -1051,6 +1063,10 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
       }
 #endif
 
+      char *topiccopy = NULL;
+      if (mqtt_cb)
+         topiccopy = strdup (topic);
+
       // NULL terminate stuff
       if (prefix && prefix > topic && prefix[-1] == '/')
          prefix[-1] = 0;
@@ -1109,6 +1125,12 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
          }
          jo_rewind (j);
       }
+
+      for (mqtt_cb_t * s = mqtt_cb; s; s = s->next)
+         if (s->cb && s->client == client && lwmqtt_match (s->sub, topiccopy))
+            s->cb (s->arg, topiccopy, j);
+      free (topiccopy);
+
       const char *location = NULL;
       if (!err)
       {
@@ -1191,6 +1213,8 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
          app_callback (client, topiccommand, NULL, "connect", j);
          jo_free (&j);
       }
+      for (mqtt_cb_t * s = mqtt_cb; s; s = s->next)
+         lwmqtt_subscribe (mqtt_client[client], s->sub);
    } else
    {
       if (xEventGroupGetBits (revk_group) & (GROUP_MQTT << client))
@@ -1468,14 +1492,16 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
             if (ip_index < 7 && !(gotip & (1 << ip_index)))
             {                   // New IPv6
                // Done as Error level as really useful if logging at all
-               ESP_LOGE (TAG, "Got IPv6 [%d] " IPV6STR " (%d)", ip_index, IPV62STR (event->ip6_info.ip), event->ip6_info.ip.zone);
+               char ip[40];
+               inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, sizeof (ip));
+               ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, ip, event->ip6_info.ip.zone);
                if (!event->ip6_info.ip.zone)
                   b.gotipv6 = 1;
 #ifdef  CONFIG_REVK_WIFI
                if (app_callback)
                {
                   jo_t j = jo_object_alloc ();
-                  jo_stringf (j, "ipv6", IPV6STR, IPV62STR (event->ip6_info.ip));
+                  jo_string (j, "ipv6", ip);
                   jo_int (j, "zone", event->ip6_info.ip.zone);
                   app_callback (0, topiccommand, NULL, "ipv6", j);
                   jo_free (&j);
@@ -1745,8 +1771,10 @@ revk_blinker (void)
 {                               // LED blinking controls, in style of revk_rgb() but bit 30 is set if not black, and bit 31 is set for blink cycle
    if (b.die)
       return 0;
+#ifdef	CONFIG_REVK_BLINK_STARTUP
    if (uptime () < 2)
       return 0x4C00FF00;        // Green startup
+#endif
    if (b.factorycount == 1)
       return 0x7CFFFF00;        // Factory reset
    if (b.factorycount == 2)
@@ -1761,8 +1789,9 @@ revk_blinker (void)
    if (!on && !off)
       on = off = (revk_link_down ()? 3 : 6);
 #endif
-   if (!off)
-      off = 1;
+   uint8_t fade = ((on > off ? off : on) ? : 1);
+   if (fade > 5)
+      fade = 5;                 // Max fade up/down time
    if (++tick >= on + off)
    {                            // End of cycle, work out next colour
       tick = 0;
@@ -1779,12 +1808,16 @@ revk_blinker (void)
    // Updated LED every 10th second
    if (tick < on)
    {
-      uint8_t scale = 255 * (tick + 1) / on;
+      uint8_t scale = 255;
+      if (tick < fade)
+         scale = 255 * (tick + 1) / fade;
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
          (scale * (rgb & 0xFF) / 255) + (rgb & 0x7F000000) + 0x80000000;;
    } else
    {
-      uint8_t scale = 255 * (on + off - tick - 1) / off;
+      uint8_t scale = 0;
+      if (tick - on < fade)
+         scale = 255 - 255 * (tick + 1 - on) / fade;
       return ((scale * ((rgb >> 16) & 0xFF) / 255) << 16) + ((scale * ((rgb >> 8) & 0xFF) / 255) << 8) +
          (scale * (rgb & 0xFF) / 255);
    }
@@ -1878,17 +1911,18 @@ task (void *pvParameters)
    uint32_t ota_check = 0;
    if (otaauto)
    {
+#ifdef CONFIG_REVK_WEB_BETA
       if (otabeta)
          ota_check = 86400 - 1800 + (esp_random () % 3600);     //  A day ish
-      else if (otastart)
+      else
+#endif
+      if (otastart)
          ota_check = otastart + (esp_random () % otastart);     // Check at start anyway
       else if (otadays)
          ota_check = 86400 * otadays + (esp_random () % 3600);  // Min periodic check
    }
-#ifdef	CONFIG_REVK_BLINK_LIB
-   revk_blink_init ();
-#endif
    revk_gpio_input (factorygpio);
+   b.factorywas = revk_gpio_get (factorygpio);
    while (1)
    {                            /* Idle */
       if (!b.wdt_test && watchdogtime)
@@ -1914,22 +1948,31 @@ task (void *pvParameters)
             uint8_t press = revk_gpio_get (factorygpio);
             if (press && !b.factorywas)
             {
-               if (b.factorycount < 3)
-                  b.factorycount++;
+               b.factorycount++;
                ESP_LOGE (TAG, "Pressed factory reset button %d", b.factorycount);
                b.factorytick = 0;
-               if (b.factorycount == 3)
-               {                // Do factory reset
-                  const esp_app_desc_t *app = esp_app_get_description ();
-                  revk_settings_factory (TAG, app->project_name, 0);
-                  revk_restart (3, "Factory reset");
-               }
             }
             b.factorywas = press;
-            if (b.factorytick == 30)
-               b.factorycount = 0;      // Timeout
-            if (b.factorytick < 31)
-               b.factorytick++;
+            if (b.factorycount)
+            {
+               if (!press && b.factorytick == 31)
+               {
+                  if (b.factorycount == 1)
+                     revk_restart (1, "Reset button");
+                  else if (b.factorycount == 2)
+                     revk_command ("upgrade", NULL);
+                  else if (b.factorycount == 3)
+                  {             // Do factory reset
+                     const esp_app_desc_t *app = esp_app_get_description ();
+                     revk_settings_factory (TAG, app->project_name, 0);
+                     revk_restart (3, "Factory reset");
+                  }
+               }
+               if (b.factorytick < 31)
+                  b.factorytick++;
+               else
+                  b.factorycount = 0;   // Timeout
+            }
          }
       }
       static uint32_t last = 0;
@@ -1945,7 +1988,7 @@ task (void *pvParameters)
                lwmqtt_reconnect6 (mqtt_client[i]);
 #endif
          }
-         if (!b.disableupgrade && otaauto && ota_check && ota_check < now)
+         if (!b.disableupgrade && !b.disablewifi && otaauto && ota_check && ota_check < now)
          {                      // Check for s/w update
             time_t t = time (0);
             struct tm tm = { 0 };
@@ -1954,9 +1997,12 @@ task (void *pvParameters)
                ota_check = now + (esp_random () % 21600);       // A periodic check should be in the middle of the night, so wait a bit more (<7200 is a startup check)
             else
             {                   // Do a check
+#ifdef CONFIG_REVK_WEB_BETA
                if (otabeta)
                   ota_check = now + 86400 - 1800 + (esp_random () % 3600);      // A day ish
-               else if (otadays)
+               else
+#endif
+               if (otadays)
                   ota_check = now + 86400 * otadays - 43200 + (esp_random () % 86400);  // Next check approx otadays days later
                else
                   ota_check = 0;
@@ -2013,8 +2059,18 @@ task (void *pvParameters)
 #else
             ESP_LOGI (TAG, "Up %lu%s", (unsigned long) now, mq);
 #endif
-            if (!b.disablewifi && wifiuptime && now > wifiuptime && !restart_time)
-               revk_disable_wifi ();
+            if (!b.disablewifi && wifiuptime && now > wifiuptime && now < wifiuptime + 10 && !restart_time)
+               revk_disable_wifi ();    // Catch wifi uptime, but allow wifi to be turned back on later if needed
+#endif
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+            if (!b.disableusb && usbuptime && now > usbuptime && now < usbuptime + 10 && !restart_time)
+            {                   // Turn off USB
+               ESP_LOGE (TAG, "USB Shutdown after %d seconds", usbuptime);
+               usleep (100000);
+               b.disableusb = 1;
+               gpio_reset_pin (19);
+               gpio_reset_pin (20);
+            }
 #endif
          }
 #ifdef	CONFIG_REVK_MQTT
@@ -2093,18 +2149,11 @@ task (void *pvParameters)
                   jo_int (j, "chan", ap.primary);
                   if (sta_netif)
                   {
-                     {
-                        esp_netif_ip_info_t ip;
-                        if (!esp_netif_get_ip_info (sta_netif, &ip) && ip.ip.addr)
-                           jo_stringf (j, "ipv4", IPSTR, IP2STR (&ip.ip));
-                     }
-#ifdef CONFIG_LWIP_IPV6
-                     {
-                        esp_ip6_addr_t ip;
-                        if (!esp_netif_get_ip6_global (sta_netif, &ip))
-                           jo_stringf (j, "ipv6", IPV6STR, IPV62STR (ip));
-                     }
-#endif
+                     char ip[40];
+                     if (revk_ipv4 (ip))
+                        jo_stringf (j, "ipv4", ip);
+                     if (revk_ipv6 (ip))
+                        jo_stringf (j, "ipv6", ip);
                   }
                }
 #ifdef	CONFIG_REVK_STATE_EXTRA
@@ -2120,23 +2169,23 @@ task (void *pvParameters)
             }
          }
 #endif
-         if (!b.disablewifi)
-         {
+         if (!b.disablewifi && !restart_time)
+         {                      // Consider restart
 #ifdef  CONFIG_REVK_MESH
             if (esp_mesh_is_root ())
             {                   // Root reset is if wifireset and alone, or mesh reset even if not alone
                if ((wifireset && revk_link_down () > wifireset && esp_mesh_get_total_node_num () <= 1)
                    || (meshreset && revk_link_down () > meshreset))
-                  revk_restart (0, "Mesh sucks");
+                  revk_restart (1, "Mesh sucks");
             } else
             {                   // Leaf reset if only if link down (meaning alone)
                if (wifireset && revk_link_down () > wifireset)
-                  revk_restart (0, "Mesh sucks");
+                  revk_restart (1, "Mesh sucks");
             }
 #else
 #ifdef	CONFIG_REVK_WIFI
             if (wifireset && revk_link_down () > wifireset)
-               revk_restart (0, "Offline too long");
+               revk_restart (1, "Offline too long");
 #endif
 #endif
          }
@@ -2230,7 +2279,7 @@ gpio_ok (int8_t p)
    if (p >= 34)
       return 2;                 // Input only
    if (p == 1 || p == 3)
-      return 3 + 8;             // Serial       
+      return 3 + 8;             // Serial
    return 3;                    // Input and output
 #endif
    // ESP32 (S3)
@@ -2276,6 +2325,11 @@ gpio_ok (int8_t p)
 void
 revk_boot (app_callback_t * app_callback_cb)
 {                               /* Start the revk task, use __FILE__ and __DATE__ and __TIME__ to set task name and version ID */
+#if	CONFIG_REVK_GPIO_POWER >= 0
+   gpio_set_level (CONFIG_REVK_GPIO_POWER, 1);
+   gpio_set_direction (CONFIG_REVK_GPIO_POWER, GPIO_MODE_OUTPUT);
+
+#endif
 #ifdef	CONFIG_REVK_GPIO_INIT
    {                            // Safe GPIO
       gpio_config_t i = {.mode = GPIO_MODE_INPUT };
@@ -2287,13 +2341,16 @@ revk_boot (app_callback_t * app_callback_cb)
       gpio_config_t u = {.pull_up_en = 1,.mode = GPIO_MODE_DISABLE };
       gpio_config_t d = {.pull_down_en = 1,.mode = GPIO_MODE_DISABLE };
       for (uint8_t p = 0; p <= 48; p++)
-         if (gpio_ok (p) == 3)  // Input and output, not serial
-         {
-            if (gpio_get_level (p))
-               u.pin_bit_mask |= (1LL << p);
-            else
-               d.pin_bit_mask |= (1LL << p);
-         }
+#if	CONFIG_REVK_GPIO_POWER >= 0
+         if (p != CONFIG_REVK_GPIO_POWER)
+#endif
+            if (gpio_ok (p) == 3)       // Input and output, not serial
+            {
+               if (gpio_get_level (p))
+                  u.pin_bit_mask |= (1LL << p);
+               else
+                  d.pin_bit_mask |= (1LL << p);
+            }
       if (u.pin_bit_mask)
       {
          //ESP_LOGE (TAG, "Pull up %016llX", u.pin_bit_mask);
@@ -2388,8 +2445,18 @@ revk_boot (app_callback_t * app_callback_cb)
    ESP_LOGI (TAG, "nvs_flash_init");
    nvs_flash_init ();
    ESP_LOGI (TAG, "nvs_flash_init_partition");
-   nvs_flash_init_partition (TAG);
-   ESP_LOGI (TAG, "nvs_open_from_partition");
+   esp_err_t e = nvs_flash_init_partition (TAG);
+   if (e == ESP_ERR_NVS_NO_FREE_PAGES || e == ESP_ERR_NVS_NEW_VERSION_FOUND)
+   {
+      ESP_LOGE (TAG, "NVS erase/init because %s", esp_err_to_name (e));
+      e = nvs_flash_erase_partition (TAG);
+      if (!e)
+         e = nvs_flash_init_partition (TAG);
+   }
+   if (e)
+      ESP_LOGE (TAG, "NVS error %s", esp_err_to_name (e));
+   else
+      ESP_LOGI (TAG, "nvs_open_from_partition");
    const esp_app_desc_t *app = esp_app_get_description ();
 #ifndef	CONFIG_REVK_OLD_SETTINGS
    revk_settings_load (TAG, app->project_name);
@@ -2538,6 +2605,9 @@ revk_start (void)
 #endif
 #ifdef	CONFIG_REVK_MESH
    mesh_init ();
+#endif
+#ifdef	CONFIG_REVK_BLINK_LIB
+   revk_blink_init ();
 #endif
    /* DHCP */
    char *id = NULL;
@@ -3042,7 +3112,8 @@ revk_web_head (httpd_req_t * req, const char *title)
 {                               // Generic HTML heading
    char *qs = NULL;
    httpd_resp_set_type (req, "text/html;charset=utf-8");
-   revk_web_send (req, "<meta name='viewport' content='width=device-width, initial-scale=.75'>" //
+   revk_web_send (req, "<!DOCTYPE html>"        //
+                  "<meta name='viewport' content='width=device-width, initial-scale=.75'>"      //
                   "<title>%s</title>"   //
                   "<style>"     //
                   "body{font-family:sans-serif;background:#8cf;background-image:linear-gradient(to right,#8cf,#48f);}"  //
@@ -3141,7 +3212,7 @@ revk_web_setting_info (httpd_req_t * req, const char *fmt, ...)
    va_start (ap, fmt);
    vasprintf (&info, fmt, ap);
    va_end (ap);
-   revk_web_send (req, "<tr><td colspan=3>%s</th></tr>", info);
+   revk_web_send (req, "<tr><td colspan=3>%s</td></tr>", info);
    free (info);
 }
 #endif
@@ -3237,6 +3308,29 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
       place = "Unused";
    if (s->ptr == &hostname)
       place = revk_id;          // Special case
+#ifdef  REVK_SETTINGS_HAS_ENUM
+   if (s->isenum)
+   {
+      revk_web_send (req, "<td nowrap><select name=\"_%s\" onchange=\"this.name='%s';settings.__%s.name='%s';\">", field, field,
+                     field, field);
+      const char *e = s->enums;
+      int n = 0;
+      int v = atoi (value);
+      if (e)
+         while (*e)
+         {
+            const char *p = e;
+            while (*e && *e != ',')
+               e++;
+            revk_web_send (req, "<option value=\"%d\"%s>%.*s</option>", n, n == v ? " selected" : "", (int) (e - p), p);
+            if (*e == ',')
+               e++;
+            n++;
+         }
+      revk_web_send (req, "</select></td><td>%s</td></tr>", comment);
+      return;
+   }
+#endif
 #ifdef  REVK_SETTINGS_HAS_BIT
    if (s->type == REVK_SETTINGS_BIT)
    {
@@ -3258,10 +3352,11 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
 #endif
       )
    {                            // Numeric
-      if (s->hex)
+      if (s->hex || s->digits)
          revk_web_send (req,
                         "<td nowrap><input id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' autocorrect='off' placeholder=\"%s\" style=\"font-family:monospace\" size=%d maxlength=%d>%s</td><td>%s</td></tr>",
-                        field, field, field, revk_web_safe (&qs, value), place, s->size * 2, s->size * 2, s->gpio ? " (GPIO)" :
+                        field, field, field, revk_web_safe (&qs, value), place, s->digits ? : s->size * 2,
+                        s->digits ? : s->size * 2, s->gpio ? " (GPIO)" :
 #ifdef	REVK_SETTINGS_HAS_UNIT
                         s->unit ? :
 #endif
@@ -3275,6 +3370,13 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
 #endif
                         "", comment);
    } else
+#endif
+#ifdef  REVK_SETTINGS_HAS_TEXT
+   if (s->type == REVK_SETTINGS_TEXT)
+      revk_web_send (req,
+                     "<td nowrap><textarea cols=40 rows=4 id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" autocapitalize='off' autocomplete='off' spellcheck='false' size=40 autocorrect='off' placeholder=\"%s\">%s</textarea></td><td>%s</td></tr>",
+                     field, field, field, *place ? place : "TEXT", revk_web_safe (&qs, value), comment);
+   else
 #endif
 #ifdef  REVK_SETTINGS_HAS_JSON
    if (s->type == REVK_SETTINGS_JSON)
@@ -3302,19 +3404,19 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
    if (s->type == REVK_SETTINGS_STRING || s->base64 || s->base32 || s->hex)
    {
       int w = s->size;
-      if (w)
-         w--;                   // Includes null
       if (s->hex)
          w *= 2;
-      if (s->base32)
+      else if (s->base32)
          w = (w * 8 + 4) / 5;
-      if (s->base64)
+      else if (s->base64)
          w = (w * 8 + 5) / 6;
+      else
+         w--;                   // Lose the null
       if (w)                    // Text (fixed)
          revk_web_send (req,
                         "<td nowrap><input %smaxlength=%d size=%d id=\"%s\" name=\"_%s\" onchange=\"this.name='%s';\" value=\"%s\" autocapitalize='off' autocomplete='off' spellcheck='false' size=40 autocorrect='off' placeholder=\"%s\"></td><td>%s</td></tr>",
                         (s->base64 || s->base32
-                         || s->hex) ? "style=\"font-family:monospace\" " : "", w + 1, w < 20 ? w : 20, field, field, field,
+                         || s->hex) ? "style=\"font-family:monospace\" " : "", w, w < 20 ? w : 20, field, field, field,
                         revk_web_safe (&qs, value), place, comment);
       else                      // Text (variable)
          revk_web_send (req,
@@ -3369,13 +3471,18 @@ revk_web_settings (httpd_req_t * req)
          jo_strncpy (j, t, sizeof (t));
          page = atoi (t);
       }
-      if (jo_find (j, "_upgrade"))
+      if (jo_find (j, "_upgrade") || jo_find (j, "_reboot"))
       {
          const char *e = revk_settings_store (j, &location, REVK_SETTINGS_JSON_STRING); // Saved settings
          if (e && !*e && app_callback)
             app_callback (0, topiccommand, NULL, "setting", NULL);
          if (!e || !*e)
-            e = revk_command ("upgrade", NULL);
+         {
+            if (jo_find (j, "_reboot"))
+               revk_restart (3, "Reboot");
+            else
+               e = revk_command ("upgrade", NULL);
+         }
          if (e && *e)
             revk_web_send (req, "<p class=error>%s</p>", e);
 #ifdef  CONFIG_REVK_SETTINGS_PASSWORD
@@ -3425,16 +3532,16 @@ revk_web_settings (httpd_req_t * req)
                   while (waiting--)
                   {
                      sleep (1);
-                     esp_netif_ip_info_t ip;
-                     if (!esp_netif_get_ip_info (sta_netif, &ip) && ip.ip.addr)
+                     char ip[16];
+                     if (revk_ipv4 (ip))
                      {
-                        revk_web_send (req, "WiFi connected <b>" IPSTR "</b>.", IP2STR (&ip.ip));       // Attempts to allow copy to clipboard fail...
+                        revk_web_send (req, "WiFi connected <big><b>%s</b></big>.", ip);
                         ok = 2;
                         break;
                      }
                   }
                   if (!ok)
-                     revk_web_send (req, "WiFi did not connect, try again.");
+                     revk_web_send (req, "WiFi did not connect <big><b><tt>%s</tt></b></big>, try again.", ssid);
                }
             }
          } else
@@ -3477,7 +3584,7 @@ revk_web_settings (httpd_req_t * req)
 #endif
    if (!shutdown)
    {
-      revk_web_send (req, "<tr id=_set><td><input name=_save type=submit value='Save'></td><td colspan=2 nowrap>");
+      revk_web_send (req, "<tr id=_set><td valign=top><input name=_save type=submit value='Save'></td><td colspan=2 nowrap>");
       if (revk_link_down ())
          page = -1;             // Basic settings to get on line
       else
@@ -3491,12 +3598,6 @@ revk_web_settings (httpd_req_t * req)
          addpage (-1, "Basic");
 #ifdef	CONFIG_REVK_WEB_EXTRA
          addpage (0, appname);
-         for (int p = 1; p <= CONFIG_REVK_WEB_EXTRA_PAGES; p++)
-         {
-            char temp[20];
-            sprintf (temp, "%d", p);
-            addpage (p, temp);
-         }
 #endif
 #ifndef  CONFIG_REVK_OLD_SETTINGS
          for (revk_settings_t * s = revk_settings; s->len; s++)
@@ -3507,10 +3608,27 @@ revk_web_settings (httpd_req_t * req)
             }
          addpage (-3, "Library");
 #endif
+#ifdef	CONFIG_REVK_WEB_EXTRA
+         for (int p = 1; p <= CONFIG_REVK_WEB_EXTRA_PAGES; p++)
+         {
+            if (CONFIG_REVK_WEB_EXTRA_PAGES > 5 && (p % 5) == 1)
+               revk_web_send (req, "<br>");
+            char temp[20];
+            sprintf (temp, "%d", p);
+#ifdef	REVK_SETTINGS_TAB
+            if (*tab[p - 1])
+               addpage (p, tab[p - 1]);
+            else
+#endif
+               addpage (p, temp);
+         }
+#endif
          if (!revk_link_down () && *otahost && page == -1)
-            revk_web_send (req,
-                           "</td><td id=_upgrade><input name=_upgrade type=submit value='Upgrade now from %s%s'>",
-                           otahost, otabeta ? " (beta)" : "");
+            revk_web_send (req, "<br><input id=_upgrade name=_upgrade type=submit value='Upgrade now from %s%s'>", otahost,
+#ifdef CONFIG_REVK_WEB_BETA
+                           otabeta ? " (beta)" :
+#endif
+                           "");
       }
       revk_web_send (req, "</td></tr>");
       if (
@@ -3524,43 +3642,50 @@ revk_web_settings (httpd_req_t * req)
       case -1:                 // Basic
          if (!revk_link_down () && *otahost)
          {
-#ifndef  CONFIG_REVK_OLD_SETTINGS
             if (otadays)
                revk_web_setting_s (req, "Auto upgrade", "otaauto", otaauto, NULL, "Automatic updates");
 #ifdef	CONFIG_REVK_WEB_BETA
             revk_web_setting (req, "Beta software", "otabeta");
 #endif
-#endif
             hr ();
          }
          if (sta_netif)
          {
+            revk_web_setting_title (req, "WiFi settings");
+            if (revk_link_down ())
+               revk_web_setting_info (req, "Set these to connect to your network/internet");
             revk_web_setting_s (req, "SSID", "wifissid", wifissid, "WiFi name", NULL);
             revk_web_setting_s (req, "Passphrase", "wifipass", wifipass, "WiFi pass", NULL);
-            revk_web_setting_s (req, "Hostname", "hostname", hostname, NULL,
-#ifdef  CONFIG_MDNS_MAX_INTERFACES
-                                ".local"
-#else
-                                ""
+#ifndef  CONFIG_MDNS_MAX_INTERFACES
+            if (!revk_link_down ())
 #endif
-               );
+               revk_web_setting_s (req, "Hostname", "hostname", hostname, NULL, NULL);
             if (!shutdown)
                revk_web_send (req, "<tr id=_found hidden><td>Found:</td><td colspan=2 id=_list></td></tr>");
-            hr ();
          }
-         revk_web_setting_s (req, "MQTT host", "mqtthost", mqtthost[0], "hostname", NULL);
-         revk_web_setting_s (req, "MQTT user", "mqttuser", mqttuser[0], "username", NULL);
-         revk_web_setting_s (req, "MQTT pass", "mqttpass", mqttpass[0], "password", NULL);
-#ifdef  CONFIG_REVK_SETTINGS_PASSWORD
          hr ();
-         revk_web_setting_s (req, "Password", "password", password, NULL,
-                             "Settings password (not sent securely, so use with care on local network you control)");
-#endif
+         if (!revk_link_down ())
+         {
+            revk_web_setting_title (req, "MQTT settings");
+            if (!*mqtthost[0])
+               revk_web_setting_info (req, "Only needed if you have an MQTT server");
+            revk_web_setting_s (req, "MQTT host", "mqtthost", mqtthost[0], "hostname", NULL);
+            revk_web_setting_s (req, "MQTT user", "mqttuser", mqttuser[0], "username", NULL);
+            revk_web_setting_s (req, "MQTT pass", "mqttpass", mqttpass[0], "password", NULL);
 #ifdef	CONFIG_REVK_WEB_TZ
-         hr ();
-         revk_web_setting_s (req, "Timezone", "tz", tz, "TZ code",
-                             "See <a href ='https://gist.github.com/alwynallan/24d96091655391107939'>list</a>");
+            hr ();
+            revk_web_setting_s (req, "Timezone", "tz", tz, "TZ code",
+                                "See <a href ='https://gist.github.com/alwynallan/24d96091655391107939'>list</a>");
 #endif
+#ifdef  CONFIG_REVK_SETTINGS_PASSWORD
+            hr ();
+            revk_web_setting_title (req, "Password restrict all settings");
+            if (!*password)
+               revk_web_setting_info (req, "Be careful setting this as you will need it to make any more changes.");
+            revk_web_setting_s (req, "Password", "password", password, NULL,
+                                "Settings password (not sent securely, so use with care on local network you control)");
+#endif
+         }
          break;
 #ifdef	REVK_SETTINGS_HAS_COMMENT
 #ifndef	CONFIG_REVK_OLD_SETTINGS
@@ -3572,6 +3697,12 @@ revk_web_settings (httpd_req_t * req)
             for (revk_settings_t * s = revk_settings; s->len; s++)
                if (!s->hide && s->revk == (page == -3 ? 1 : 0))
                {
+                  void adda (revk_settings_t * s, int i)
+                  {
+                     char tag[32];
+                     snprintf (tag, sizeof (tag), "%s%d", s->name, i + 1);
+                     revk_web_setting (req, NULL, tag);
+                  }
                   void add (revk_settings_t * s)
                   {
                      if (s->array)
@@ -3583,11 +3714,7 @@ revk_web_settings (httpd_req_t * req)
                            line = 1;
                         }
                         for (int i = 0; i < s->array; i++)
-                        {       // Array
-                           char tag[32];
-                           snprintf (tag, sizeof (tag), "%s%d", s->name, i + 1);
-                           revk_web_setting (req, NULL, tag);
-                        }
+                           adda (s, i);
                      } else
                      {
                         if (!s->group)
@@ -3606,9 +3733,21 @@ revk_web_settings (httpd_req_t * req)
                      if (line >= 0)
                         hr ();
                      found[s->group / 8] |= (1 << (s->group & 7));
-                     for (revk_settings_t * g = revk_settings; g->len; g++)
-                        if (!g->hide && g->group == s->group)
-                           add (g);
+                     revk_settings_t *g = NULL;
+                     if (s->array)
+                        for (g = revk_settings; g->len; g++)
+                           if (!g->hide && g->group == s->group && s->array != g->array)
+                              break;
+                     if (g && !g->len)
+                        for (int i = 0; i < s->array; i++)
+                        {
+                           for (g = revk_settings; g->len; g++)
+                              if (!g->hide && g->group == s->group)
+                                 adda (g, i);
+                     } else
+                        for (g = revk_settings; g->len; g++)
+                           if (!g->hide && g->group == s->group)
+                              add (g);
                      line = 1;
                   } else
                      add (s);
@@ -3626,17 +3765,24 @@ revk_web_settings (httpd_req_t * req)
          break;
 #endif
       }
-      if (shutdown || page == -1)
+      if (!revk_link_down () && (shutdown || page == -1))
          hr ();
    }
-   revk_web_send (req, "</table></form>");
+   revk_web_send (req, "</table>");
+   if (!shutdown && page == -1 && (!*password || loggedin))
+   {
+      if (revk_link_down ())
+         revk_web_send (req, "<input name=_save type=submit value='Save'>");
+      revk_web_send (req, "<input name=_reboot type=submit value='Reboot'>");
+   }
+   revk_web_send (req, "</form>");
 #ifdef CONFIG_HTTPD_WS_SUPPORT
    // A tad clunky, could be improved.
    revk_web_send (req, "<script>"       //
                   "var f=document.settings;"    //
                   "var reboot=0;"       //
                   "var ws = new WebSocket('ws://'+window.location.host+'/revk-status');ws.onopen=function(v){ws.send('%s');};"  //
-                  "ws.onclose=function(v){ws=undefined;document.getElementById('_msg').textContent=(reboot?'Rebooting':'…');if(reboot)setTimeout(function(){location.reload();},3000);};"     //
+                  "ws.onclose=function(v){ws=undefined;document.getElementById('_msg').textContent=(reboot?'Rebooting':'…');if(reboot)setTimeout(function(){location.href='/';},3000);};"     //
                   "ws.onerror=function(v){ws.close();};"        //
                   "ws.onmessage=function(e){"   //
                   "o=JSON.parse(e.data);"       //
@@ -3689,7 +3835,7 @@ revk_web_settings (httpd_req_t * req)
    }
    httpd_resp_sendstr_chunk (req, "</script>");
 #endif
-   if (shutdown || page == -1)
+   if (!revk_link_down () && (shutdown || page == -1))
    {                            // IP info
       revk_web_send (req, "<table>");
       int32_t up = uptime ();
@@ -3716,19 +3862,13 @@ revk_web_settings (httpd_req_t * req)
       }
       if (sta_netif)
       {
-         {
-            esp_netif_ip_info_t ip;
-            if (!esp_netif_get_ip_info (sta_netif, &ip) && ip.ip.addr)
-               revk_web_send (req, "<tr><td>IPv4</td><td>" IPSTR "</td></tr>"   //
-                              "<tr><td>Gateway</td><td>" IPSTR "</td></tr>", IP2STR (&ip.ip), IP2STR (&ip.gw));
-         }
-#ifdef CONFIG_LWIP_IPV6
-         {
-            esp_ip6_addr_t ip;
-            if (!esp_netif_get_ip6_global (sta_netif, &ip))
-               revk_web_send (req, "<tr><td>IPv6</td><td>" IPV6STR "</td></tr>", IPV62STR (ip));
-         }
-#endif
+         char ip[40];
+         if (revk_ipv4 (ip))
+            revk_web_send (req, "<tr><td>IPv4</td><td>%s</td></tr>", ip);
+         if (revk_ipv4gw (ip))
+            revk_web_send (req, "<tr><td>Gateway</td><td>%s</td></tr>", ip);
+         if (revk_ipv6 (ip))
+            revk_web_send (req, "<tr><td>IPv6</td><td>%s</td></tr>", ip);
          {
             void dns (esp_netif_dns_type_t t)
             {
@@ -3739,7 +3879,10 @@ revk_web_settings (httpd_req_t * req)
                      revk_web_send (req, "<tr><td>DNS</td><td>" IPSTR "</td></tr>", IP2STR (&dns.ip.u_addr.ip4));
 #ifdef CONFIG_LWIP_IPV6
                   else if (dns.ip.type == ESP_IPADDR_TYPE_V6)
-                     revk_web_send (req, "<tr><td>DNS</td><td>" IPV6STR "</td></tr>", IP2STR (&dns.ip.u_addr.ip6));
+                  {
+                     inet_ntop (AF_INET6, (void *) &dns.ip.u_addr.ip6, ip, sizeof (ip));
+                     revk_web_send (req, "<tr><td>DNS</td><td>%s</td></tr>", ip);
+                  }
 #endif
                }
             }
@@ -4045,9 +4188,10 @@ ap_start (void)
       if ((l = strlen (appass)) > sizeof (cfg.ap.password))
          l = sizeof (cfg.ap.password);
       memcpy (&cfg.ap.password, appass, l);
-      cfg.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+      //cfg.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+      cfg.ap.authmode = WIFI_AUTH_WPA2_WPA3_PSK;
    }
-   ESP_LOGI (TAG, "AP%s config mode start %.*s", mode == WIFI_MODE_STA ? "STA" : "", cfg.ap.ssid_len, cfg.ap.ssid);
+   ESP_LOGE (TAG, "AP%s config mode start %.*s", mode == WIFI_MODE_STA ? "STA" : "", cfg.ap.ssid_len, cfg.ap.ssid);
    // Make it go
    esp_wifi_set_mode (mode == WIFI_MODE_STA ? WIFI_MODE_APSTA : WIFI_MODE_AP);
    REVK_ERR_CHECK (esp_wifi_set_protocol (ESP_IF_WIFI_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N));
@@ -4239,9 +4383,9 @@ ota_task (void *pvParameters)
                   if ((err = REVK_ERR_CHECK (esp_ota_write (ota_handle, buf, len))))
                      break;
                   if (!ota_data)
-                     revk_restart (10, "OTA Download started");
+                     revk_restart (10, "OTA Started");
                   else if (ota_data < ota_size / 2 && (ota_data + len) >= ota_size / 2)
-                     revk_restart (10, "OTA Download progress");
+                     revk_restart (10, "OTA Progress");
                   ota_data += len;
                   now = uptime ();
                   ota_percent = ota_data * 100 / ota_size;
@@ -4266,7 +4410,7 @@ ota_task (void *pvParameters)
                jo_string (j, "complete", ota_partition->label);
                revk_info_clients ("upgrade", &j, -1);
                esp_ota_set_boot_partition (ota_partition);
-               revk_restart (3, "OTA Download complete");
+               revk_restart (3, "OTA Complete");
             } else
             {
                revk_restart (3, err == ESP_ERR_OTA_VALIDATE_FAILED ? "OTA Validation failed" : "OTA Failed");
@@ -4274,9 +4418,11 @@ ota_task (void *pvParameters)
                if (err == ESP_ERR_OTA_VALIDATE_FAILED && otaauto && otadays && otadays < 30)
                {                // Force long recheck delay
                   jo_t j = jo_make (NULL);
+#ifdef	CONFIG_REVK_WEB_BETA
                   if (otabeta)
                      jo_bool (j, "otabeta", 0);
                   else
+#endif
                   {
                      jo_int (j, "otadays", 30);
                      jo_bool (j, "otastart", 0);
@@ -4333,7 +4479,11 @@ revk_upgrade_url (const char *val, const char *ext)
 #else
                 "http",         /* If not signed, use http as code should be signed and this uses way less memory  */
 #endif
-                *val ? val : otahost, otabeta ? "beta/" : "", appname, revk_build_suffix, ext, revk_id);        // Hostname provided
+                *val ? val : otahost,
+#ifdef	CONFIG_REVK_WEB_BETA
+                otabeta ? "beta/" :
+#endif
+                "", appname, revk_build_suffix, ext, revk_id);  // Hostname provided
    return url;
 }
 
@@ -4461,6 +4611,7 @@ revk_upgrade (const char *target, jo_t j)
       esp_bt_controller_disable ();     // Kill bluetooth during download
       esp_wifi_set_ps (WIFI_PS_NONE);   // Full wifi
 #endif
+      sleep (1);
    }
    char *url = revk_upgrade_url (val, "bin");
    ota_task_id = revk_task ("OTA", ota_task, url, 5);
@@ -4639,7 +4790,7 @@ revk_mqtt_close (const char *reason)
             jo_string (j, "reason", restart_reason);
          revk_state_clients (NULL, &j, 1 << client);
          lwmqtt_end (&mqtt_client[client]);
-         ESP_LOGI (TAG, "MQTT%d Closed", client);
+         ESP_LOGE (TAG, "MQTT%d Closed", client);
          xEventGroupWaitBits (revk_group, GROUP_MQTT_DOWN << client, false, true, 2 * 1000 / portTICK_PERIOD_MS);
       }
    ESP_LOGI (TAG, "MQTT Closed");
@@ -4786,6 +4937,8 @@ revk_season (time_t now)
          *p++ = 'Y';
       if (t.tm_mon == 9 && t.tm_mday == 31 && t.tm_hour >= 16)
          *p++ = 'H';
+      if (t.tm_mon == 2 && t.tm_mday == 17)
+         *p++ = 'P';
       const uint8_t ed[] = { 114, 103, 23, 111, 31, 118, 108, 28, 116, 105, 25, 113, 102, 22, 110, 30,
          117, 107, 27
       };
@@ -5029,6 +5182,7 @@ getmoons (time_t t)
       moonlast = f2;
       moonnew = moontime (cycle + 2, 0);
       moonnext = moontime (cycle + 2, 0.5);
+      return;
    }
    moonlast = f1;
    moonnew = moontime (cycle + 1, 0);
@@ -5054,6 +5208,13 @@ revk_moon_full_next (time_t t)
 {                               // Next full moon (<t)
    getmoons (t);
    return moonnext;
+}
+
+int
+revk_moon_phase (time_t t)
+{                               // phase 0-359 from full moon
+   getmoons (t);
+   return (t - moonlast) * 360 / (moonnext - moonlast);
 }
 
 #endif
@@ -5140,6 +5301,49 @@ void
 revk_disable_settings (void)
 {
    b.disablesettings = 1;
+}
+
+char *
+revk_ipv4 (char ipv4[16])
+{
+   if (!ipv4)
+      return NULL;
+   *ipv4 = 0;
+   esp_netif_ip_info_t ip = { 0 };
+   if (esp_netif_get_ip_info (sta_netif, &ip) || !ip.ip.addr)
+      return NULL;
+   snprintf (ipv4, 16, IPSTR, IP2STR (&ip.ip));
+   return ipv4;
+}
+
+char *
+revk_ipv4gw (char ipv4[16])
+{
+   if (!ipv4)
+      return NULL;
+   *ipv4 = 0;
+   esp_netif_ip_info_t ip = { 0 };
+   if (esp_netif_get_ip_info (sta_netif, &ip))
+      return NULL;
+   snprintf (ipv4, 16, IPSTR, IP2STR (&ip.gw));
+   return ipv4;
+}
+
+char *
+revk_ipv6 (char ipv6[40])
+{
+   if (!ipv6)
+      return NULL;
+   *ipv6 = 0;
+#ifndef CONFIG_LWIP_IPV6
+   return NULL;
+#else
+   esp_ip6_addr_t ip = { 0 };
+   if (esp_netif_get_ip6_global (sta_netif, &ip))
+      return NULL;
+   inet_ntop (AF_INET6, (void *) &ip, ipv6, 40);
+   return ipv6;
+#endif
 }
 
 #ifdef  REVK_SETTINGS_HAS_GPIO
@@ -5253,4 +5457,158 @@ revk_gpio_get (revk_gpio_t g)
       return gpio_get_level (g.num) ^ g.invert;
    return 0;
 }
+
+void
+revk_mqtt_sub (int client, const char *topic, revk_mqtt_cb_t * cb, void *arg)
+{                               // Subscribe (does so on reconnect as well) - calls back when received
+   if (client >= CONFIG_REVK_MQTT_CLIENTS || !topic)
+      return;
+   mqtt_cb_t *c;
+   for (c = mqtt_cb; c; c = c->next)
+      if (c->client == client && !strcmp (c->sub, topic))
+         return;                // Duplicate
+   if (!(c = mallocspi (sizeof (*c))))
+      return;
+   c->next = mqtt_cb;
+   c->cb = cb;
+   c->arg = arg;
+   c->client = client;
+   c->sub = strdup (topic);
+   mqtt_cb = c;
+   if (lwmqtt_connected (mqtt_client[client]))
+      lwmqtt_subscribe (mqtt_client[client], topic);
+   ESP_LOGD (TAG, "Register MQTT %s", topic);
+}
+
+void
+revk_mqtt_unsub (int client, const char *topic)
+{                               // Unsubscribe
+   if (client >= CONFIG_REVK_MQTT_CLIENTS || !topic)
+      return;
+   mqtt_cb_t **cp = &mqtt_cb;
+   while (*cp)
+   {
+      mqtt_cb_t *c = *cp;
+      if (c->client == client && strcmp (c->sub, topic))
+      {
+         *cp = c->next;
+         free (c->sub);
+         free (c);
+         continue;
+      }
+      cp = &c->next;
+   }
+   if (lwmqtt_connected (mqtt_client[client]))
+      lwmqtt_unsubscribe (mqtt_client[client], topic);
+   ESP_LOGD (TAG, "Deregister MQTT %s", topic);
+}
+
+#if	defined(CONFIG_GFX_WIDTH) && ! defined(CONFIG_GFX_BUILD_SUFFIX_GFXNONE) // GFX installed
+// Messy externs
+extern void gfx_lock (void);
+extern void gfx_clear (uint8_t);
+extern void gfx_unlock (void);
+extern void gfx_text (uint8_t flags, uint8_t size, const char *fmt, ...);
+extern uint16_t gfx_width (void);
+extern uint16_t gfx_height (void);
+extern void gfx_text_size (uint8_t flags, uint8_t size, const char *, int16_t * w, int16_t * h);
+void
+revk_gfx_init (uint32_t secs)
+{                               // Display info page, depends on IP connected, and AP mode
+   uint16_t w = gfx_width ();
+   uint16_t s = gfx_height () / 100 ? : 1;
+   if (w / 100 < s)
+      s = w / 100;
+   void t (uint8_t f, uint16_t s, const char *txt)
+   {
+      int16_t W = 0;
+      gfx_text_size (f, s, txt, &W, NULL);
+      if (W > w)
+         s = w / (W / s) ? : 1;
+      gfx_text (f, s, "%s", txt);
+   }
+   void l (void)
+   {
+      gfx_text (0, s, " ");
+   }
+   uint32_t start = 0,
+      up;
+   uint8_t len;
+   char ipv4[16];
+   char ipv6[40];
+   char apn[33];
+   char temp[50];
+   uint8_t status = 0xFF;
+   while ((up = uptime ()) - start < secs || !start)
+   {
+      uint8_t newstatus = 0;
+      if (revk_ipv4 (ipv4))
+         newstatus |= 1;
+      if (revk_ipv6 (ipv6))
+         newstatus |= 2;
+      if ((len = revk_wifi_is_ap (apn)))
+         newstatus |= 4;
+
+      wifi_ap_record_t ap = {
+      };
+      esp_wifi_sta_get_ap_info (&ap);
+      esp_netif_ip_info_t ip;
+      if (ap_netif && !esp_netif_get_ip_info (ap_netif, &ip) && ip.ip.addr)
+         newstatus |= 8;
+      if (newstatus == status)
+      {
+         usleep (100000);
+         continue;
+      }
+      status = newstatus;
+      gfx_lock ();
+      gfx_clear (0);
+      t (1, s + 2, appname);
+      t (1, s, hostname);
+      l ();
+      if (status & 4)
+      {                         // AP
+         apn[32] = 0;
+         t (1, s, "Join WiFi");
+         t (3, s, apn);
+         l ();
+         if (status & 8)
+         {
+            t (1, s, "Web page");
+            sprintf (temp, "http://" IPSTR "/", IP2STR (&ip.ip));
+            t (3, s, temp);
+            l ();
+         }
+      } else
+      {                         // Client
+         t (1, s, "WiFi");
+         t (3, s, wifissid);
+         l ();
+         if (status & 3)
+         {
+            if (!start)
+               start = up;
+            t (1, s, "IP");
+            if (status & 1)
+               t (3, s, ipv4);
+            if (status & 2)
+               t (3, s, ipv6);
+            l ();
+         } else
+         {
+            t (6, s, "Trying...");
+            l ();
+         }
+      }
+      if (ap.rssi)
+      {
+         sprintf (temp, "Chan %d RSSI %d", ap.primary, ap.rssi);
+         t (2, s, temp);
+         l ();
+      }
+      gfx_unlock ();
+   }
+}
+#endif
+
 #endif

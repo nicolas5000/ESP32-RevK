@@ -46,7 +46,7 @@ The default value for a numeric setting can just be a number, e.g. `123`. For a 
 The default can also be (unquoted) a `CONFIG_...` reference.
 Where not specified the defaults for all strings are an empty string `""` (not NULL), and values are all `0`.
 
-Additional attributes are in the form of C structure initialised values, e.g. `.array=10`. These can be separated by commas or spaces.
+Additional attributes are in the form of C structure initialised values, e.g. `.array=10`. These can be separated by commas or spaces. If no `=` then `=1` is implied, idea for flags like `.hide`
 
 Note the basic syntax of the definition files are checked, and some invalid combinations reported, but not whether all the attributes are correct, they will be reported when compiling `settings.c`.
 
@@ -56,9 +56,11 @@ Note the basic syntax of the definition files are checked, and some invalid comb
 |----|-------|
 |`bit`|A single bit value holding `0` or `1` (also `false` or `true` in JSON). This is implemented as a bit field in C and a `#define` to allow access by name.|
 |`gpio`|A GPIO definition, see below|
+|`enum`|uint8_t with an enum. Set `.enums="..."` comma separated value names||
 |`blob`|Binary data (up to 64K if space in NVS), see below|
 |`json`|A string `char*` internally, that is JSON in the settings|
 |`s`|String i.e. `char*`|
+|`text`|String i.e. `char*` but input as text area, i.e. assumed to allow mutiline|
 |`c`*N*|String allowing up to *N* characters, null terminated in a `char [N+1]` array|
 |`o`*N*|Fixed octet array `unit8_t [N]`, typically used with `.hex=1` or `.base32=1` or `.base64=1`, data has to be full size|
 |`u8`|`uint8_t`|

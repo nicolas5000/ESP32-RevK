@@ -18,6 +18,12 @@ menu "RevK"
         help
 		Use (appname/)hostname as primary MQTT topic followed by the usual prefix (command/status, etc)
 
+	config REVK_GPIO_POWER
+	int	"GPIO for power"
+	default -1
+	help
+		GPIO to be set high at start of code to maintain power on (-1 for not used)
+
 	config REVK_BLINK_SUPPORT
 	bool "LED blinking support"
 	default y
@@ -41,9 +47,15 @@ menu "RevK"
 	config REVK_BLINK
         string "Blink GPIOs"
         default ""
-	depends on REVK_BLINK_LIB
+	depends on REVK_BLINK_DEF
         help
 		One or more (space separated) LED GPIOs
+
+	config REVK_BLINK_STARTUP
+        bool "Blink Startup"
+        default y
+        help
+		Initial LED is green at startup
 
 	config REVK_LED_STRIP
 	bool "LED strip support functions"
@@ -216,6 +228,13 @@ menu "RevK"
 	depends on REVK_WIFIPS
         help
 		Set WiFi to maximum power save mode
+
+	config REVK_USBUPTIME
+	int "Turn off USBi after this time"
+	default 0
+	depends on IDF_TARGET_ESP32S3
+	help
+		Number of seconds before USB auto turns off
 
 	config REVK_APGPIO
         string "AP mode GPIO"

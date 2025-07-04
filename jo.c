@@ -279,15 +279,15 @@ jo_link (jo_t j)
 }
 
 jo_t
-jo_copy (jo_t j)
-{                               // Copy object - copies the object, and if allocating memory, makes copy of the allocated memory too
+jo_copy_dup (jo_t j, char dup)
+{                               // Copy object - copies the object, and if allocating memory (or dup set), makes copy of the allocated memory too
    if (!j || j->err)
       return NULL;              // No j
    jo_t n = jo_new ();
    if (!n)
       return n;                 // malloc fail
    memcpy (n, j, sizeof (*j));
-   if (j->alloc && j->buf)
+   if ((dup || j->alloc) && j->buf)
    {
       j->null = 0;
       n->buf = mallocspi (j->parse ? j->len + 1 : j->len ? : 1);
@@ -296,6 +296,7 @@ jo_copy (jo_t j)
          jo_free (&n);
          return NULL;           // malloc
       }
+      n->alloc = 1;
       if (j->parse)
       {                         // Ensure null
          n->buf[j->len] = 0;
@@ -1166,26 +1167,55 @@ jo_find (jo_t j, const char *path)
    while (*path)
    {
       jo_type_t t = jo_here (j);
-      if (t != JO_OBJECT)
-         break;                 // Not an object
       const char *tag = path;
-      while (*path && *path != '.')
+      if (*path == '[')
+      {
          path++;
-      int len = path - tag;
-      if (*path)
-         path++;
-      t = jo_next (j);
-      while (t == JO_TAG)
-      {                         // Scan the object
-         if (len == 1 && *tag == '*')
-            break;              // Found - wildcard - only finds first entry
-         if (!jo_strncmp (j, (char *) tag, len))
-            break;              // Found
-         jo_next (j);
-         t = jo_skip (j);
+         int n = 0;
+         while (isdigit ((int) (uint8_t) * path))
+            n = n * 10 + *path++ - '0';
+         if (*path != ']')
+            break;
+         if (*path)
+            path++;
+         if (t != JO_ARRAY)
+            break;              // Not an array
+         t = jo_next (j);
+         while (t && t != JO_CLOSE)
+         {
+            if (!n--)
+               break;
+            t=jo_skip (j);
+         }
+         if (t == JO_OBJECT && *path == '.')
+         {
+            path++;
+            continue;
+         }
+         if (!*path)
+            break;
+      } else
+      {
+         while (*path && *path != '.' && *path != '[')
+            path++;
+         int len = path - tag;
+         if (*path == '.')
+            path++;
+         if (t != JO_OBJECT)
+            break;              // Not an object
+         t = jo_next (j);
+         while (t == JO_TAG)
+         {                      // Scan the object
+            if (len == 1 && *tag == '*')
+               break;           // Found - wildcard - only finds first entry
+            if (!jo_strncmp (j, (char *) tag, len))
+               break;           // Found
+            jo_next (j);
+            t = jo_skip (j);
+         }
+         if (t != JO_TAG)
+            break;              // not found
       }
-      if (t != JO_TAG)
-         break;                 // not found
       t = jo_next (j);
       if (!*path)
          return t;              // Found

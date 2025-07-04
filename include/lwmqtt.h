@@ -111,4 +111,7 @@ const char *lwmqtt_send_full (lwmqtt_t, int tlen, const char *topic, int plen, c
 
 // Simple send - non retained no wait topic ends on space then payload
 const char *lwmqtt_send_str (lwmqtt_t, const char *msg);
+
+const char * lwmqtt_match(const char *sub,const char *topic); // NULL if no match, else match returns at #, or start of topic if no #
+
 #endif

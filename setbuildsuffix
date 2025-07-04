@@ -20,11 +20,11 @@ set rem=()
 set part=""
 set sign=""
 
-if(-e settings.def) then
+if(-e settings.def || -e main/settings.def) then
 	set rem=($rem CONFIG_REVK_OLD_SETTINGS);
 endif
 
-if(-e betarelease) then
+if(-e release/beta || -e betarelease) then
 	set add=($rem CONFIG_REVK_WEB_BETA);
 else
 	set rem=($rem CONFIG_REVK_WEB_BETA);
@@ -158,7 +158,8 @@ if("$BUILDSUFFIX" =~ *-S3*) then
 	endif
 
 	if("$BUILDSUFFIX" =~ *-R2*) then
-		set add=($add CONFIG_ESP32S3_SPIRAM_SUPPORT CONFIG_SPIRAM)
+		set add=($add CONFIG_ESP32S3_SPIRAM_SUPPORT CONFIG_SPIRAM CONFIG_SPIRAM_SPEED_80M)
+		set rem=($rem CONFIG_SPIRAM_SPEED_40M)
 	else
 		set rem=($rem CONFIG_ESP32S3_SPIRAM_SUPPORT CONFIG_SPIRAM)
 	endif
@@ -198,7 +199,7 @@ endif
 
 set bs=(`grep _BUILD_SUFFIX_ sdkconfig | sed 's/.*\(CONFIG_[A-Z0-9_]*_BUILD_SUFFIX_[A-Z0-9]*\).*/\1/'`)
 foreach c ($bs)
-	echo -n "$BUILDSUFFIX" | grep -q -- "-"`echo -n "$c" | sed 's/CONFIG_.*_BUILD_SUFFIX_\(.*\)/\1/'`
+	echo -n "$BUILDSUFFIX-" | grep -q -- "-"`echo -n "$c" | sed 's/CONFIG_.*_BUILD_SUFFIX_\(.*\)$/\1/'`"-"
 	if(! $status) then
 		set add=($add $c)
 		setenv CHANGED	1

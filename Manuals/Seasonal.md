@@ -15,5 +15,6 @@ Applications should allow for new codes being added in the future, and for some 
 |`V`|Valentine's day (14th Feb)|
 |`X`|Christmas time (1st to 25th Dec)|
 |`Y`|New Year (1st to 7th Jan)|
+|`P`|St Patrick's Day (17th Mar)|
 |`H`|Halloween (31st Oct from 4pm to midnight)|
 |`E`|Easter (Good Friday to Sunday)|

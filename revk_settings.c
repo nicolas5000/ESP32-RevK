@@ -59,6 +59,7 @@ struct def_s
    char *name2;
    char *def;
    char *attributes;
+   char *enums;
    char *array;
    char config:1;               // Is CONFIG_... def
    char quoted:1;               // Is quoted def
@@ -76,7 +77,9 @@ typename (FILE * O, const char *type)
       fprintf (O, "revk_gpio_t");
    else if (!strcmp (type, "blob"))
       fprintf (O, "revk_settings_blob_t*");
-   else if (!strcmp (type, "s") || !strcmp (type, "json"))
+   else if (!strcmp (type, "enum"))
+      fprintf (O, "uint8_t");
+   else if (!strcmp (type, "s") || !strcmp (type, "text") || !strcmp (type, "json"))
       fprintf (O, "char*");
    else if (*type == 'c' && is_digit (type[1]))
       fprintf (O, "char");
@@ -108,7 +111,7 @@ typeinit (FILE * O, const char *type)
       fprintf (O, "\"\"");
    else if (!strcmp (type, "gpio") || (*type == 'o' && is_digit (type[1])))
       fprintf (O, "{0}");
-   else if (!strcmp (type, "blob") || !strcmp (type, "s") || !strcmp (type, "json"))
+   else if (!strcmp (type, "blob") || !strcmp (type, "s") || !strcmp (type, "text") || !strcmp (type, "json"))
       fprintf (O, "NULL");
    else
       fprintf (O, "0");
@@ -181,6 +184,8 @@ main (int argc, const char *argv[])
             err (1, "Cannot open %s", fn);
          while (getline (&line, &len, I) >= 0)
          {
+            FILE *att = NULL;
+            size_t atts = 0;
             char *p;
             for (p = line + strlen (line); p > line && is_space (p[-1]); p--);
             *p = 0;
@@ -240,38 +245,81 @@ main (int argc, const char *argv[])
                }
                while (*p && is_space (*p))
                   *p++ = 0;
-               if (*p == '.')
+               while (*p)
                {
-                  d->attributes = p;
-                  while (*p == '.')
-                  {
-                     while (*p && !is_space (*p))
-                     {
-                        if (*p == '"' || *p == '\'')
-                        {
-                           char c = *p++;
-                           while (*p && *p != c)
-                           {
-                              if (*p == '\\' && p[1])
-                                 p++;
-                              p++;
-                           }
-                        }
-                        p++;
-                     }
+                  if (is_space (*p))
+                     p++;
+                  else if (*p == '/' && p[1] == '/')
+                  {             // Comment at end
+                     *p++ = 0;
+                     p++;
                      while (*p && is_space (*p))
                         p++;
-                  }
-               }
-               if (*p == '/' && p[1] == '/')
-               {
-                  *p++ = 0;
-                  p++;
-                  while (*p && is_space (*p))
-                     p++;
-                  d->comment = p;
+                     d->comment = p;
+                     break;
+                  } else if (*p == '.' || isalpha (*p))
+                  {
+                     if (!strncmp (*p == '.' ? p + 1 : p, "enums=\"", 7))
+                     {          // enums extracted separately
+                        p += (*p == '.' ? 8 : 7);
+                        size_t s;
+                        FILE *E = open_memstream (&d->enums, &s);
+                        while (*p && *p != '"')
+                        {
+                           if (*p == '\\' && p[1])
+                              fputc (*p++, E);
+                           fputc (*p++, E);
+                        }
+                        fclose (E);
+                        if (*p)
+                           p++;
+                     } else
+                     {
+                        if (!att)
+                           att = open_memstream (&d->attributes, &atts);
+                        else
+                           fputc (',', att);
+                        if (*p == '.')
+                           fputc (*p++, att);
+                        else
+                           fputc ('.', att);
+                        while (isalnum (*p))
+                           fputc (*p++, att);
+                        if (*p != '=')
+                        {
+                           fputc ('=', att);
+                           fputc ('1', att);
+                        } else
+                        {
+                           fputc (*p++, att);
+                           if (*p == '"' || *p == '\'')
+                           {
+                              char c = *p++;
+                              fputc (c, att);
+                              while (*p && *p != c)
+                              {
+                                 if (*p == '\\' && p[1])
+                                    fputc (*p++, att);
+                                 fputc (*p++, att);
+                              }
+                              if (*p == c)
+                                 p++;
+                              fputc (c, att);
+                           } else
+                              while (*p && *p != ',' && !is_space (*p))
+                                 fputc (*p++, att);
+                        }
+                     }
+                     while (is_space (*p))
+                        p++;
+                     if (*p == ',')
+                        p++;
+                  } else
+                     errx (1, "Settings issue: [%s]", p);
                }
             }
+            if (att)
+               fclose (att);
             if (d->type)
                d->type = strdup (d->type);
             if (d->comment)
@@ -380,11 +428,13 @@ main (int argc, const char *argv[])
       char hasoctet = 0;
       char hasstring = 0;
       char hasjson = 0;
+      char hastext = 0;
       char hasgpio = 0;
       char hasold = 0;
       char hasunit = 0;
       char hascomment = 0;
       char hasplace = 0;
+      char hasenum = 0;
 
       if (!nocomment)
       {
@@ -426,9 +476,21 @@ main (int argc, const char *argv[])
       if (d)
          hasstring = 1;
 
+      for (d = defs; d && (!d->type || strcmp (d->type, "text")); d = d->next);
+      if (d)
+         hastext = 1;
+
       for (d = defs; d && (!d->type || strcmp (d->type, "json")); d = d->next);
       if (d)
          hasjson = 1;
+
+      for (d = defs; d && (!d->type || strcmp (d->type, "enum")); d = d->next);
+      if (d)
+         hasenum = 1;
+
+      for (d = defs; d && (!d->type || strcmp (d->type, "gpio")); d = d->next);
+      if (d)
+         hasgpio = 1;
 
       fprintf (C, "\n");
       fprintf (C, "#include <stdint.h>\n");
@@ -446,8 +508,14 @@ main (int argc, const char *argv[])
                "struct revk_settings_s {\n"     //
                " void *ptr;\n"  //
                " const char name[%d];\n"        //
-               " const char *def;\n"    //
-               " const char *flags;\n", maxname + 1);
+               " const char *def;\n", maxname + 1);
+      if (hasenum)
+         fprintf (H, " union {\n"       //
+                  "  const char *flags;\n"      //
+                  "  const char *enums;\n"      //
+                  " };\n");
+      else
+         fprintf (H, " const char *flags;\n");
       if (hasold)
          fprintf (H, " const char *old;\n");
       if (hasunit)
@@ -476,9 +544,59 @@ main (int argc, const char *argv[])
                " uint8_t base64:1;\n"   //
                " uint8_t secret:1;\n"   //
                " uint8_t dq:1;\n"       //
-               " uint8_t gpio:1;\n"     //
-               " uint8_t rtc:1;\n"      //
-               "};\n");
+               " uint8_t rtc:1;\n");
+      if (hasgpio)
+         fprintf (H, " uint8_t gpio:1;\n");
+      if (hasenum)
+         fprintf (H, " uint8_t isenum:1;\n");   // 
+      fprintf (H, "};\n");
+
+      void revk_settings_ (FILE * F, const char *p)
+      {
+         fprintf (F, "REVK_SETTINGS_");
+         while (*p)
+         {
+            if (isalnum (*p))
+               putc (toupper (*p), F);
+            else
+               putc ('_', F);
+            p++;
+         }
+      }
+
+      if (hasenum)
+         for (d = defs; d; d = d->next)
+            if (d->type && !strcmp (d->type, "enum"))
+            {                   // Create local enums
+               if (!d->enums)
+                  errx (1, "enum needs .enums=\"...\"");
+               const char *e = d->enums;
+               int n = 0;
+               fprintf (H, "extern const char ");
+               revk_settings_ (H, d->name);
+               fprintf (H, "_ENUMS[];\n");
+               fprintf (H, "enum {\n");
+               while (*e && *e != '"')
+               {
+                  revk_settings_ (H, d->name);
+                  putc ('_', H);
+                  while (*e && *e != ',' && *e != '"')
+                  {
+                     if (isalnum (*e))
+                        putc (toupper (*e), H);
+                     else
+                        putc ('_', H);
+                     e++;
+                  }
+                  if (*e == ',')
+                     e++;
+                  fprintf (H, ",\n");
+                  n++;
+               }
+               fprintf (H, "};\n");
+               if (n > 255)
+                  errx (1, "Enum too big");
+            }
 
       for (d = defs; d && (!d->type || strcmp (d->type, "blob")); d = d->next);
       if (d)
@@ -490,10 +608,8 @@ main (int argc, const char *argv[])
                   "};\n");
          hasblob = 1;
       }
-      for (d = defs; d && (!d->type || strcmp (d->type, "gpio")); d = d->next);
-      if (d)
+      if (hasgpio)
       {
-         hasgpio = 1;
          hasunsigned = 1;       // GPIO is treated as a u16
          fprintf (H, "typedef struct revk_gpio_s revk_gpio_t;\n"        //
                   "struct revk_gpio_s {\n"      //
@@ -542,7 +658,7 @@ main (int argc, const char *argv[])
             {
                fprintf (H, "extern ");
                if (typename (H, d->type))
-                  errx (1, "Unknown type %s in %s", d->type, d->fn);
+                  errx (1, "Unknown type [%s] in %s", d->type, d->fn);
                fprintf (H, " %s", d->name);
                if (d->array)
                   fprintf (H, "[%s]", d->array);
@@ -566,11 +682,26 @@ main (int argc, const char *argv[])
          fprintf (H, " REVK_SETTINGS_BLOB,\n");
       if (hasstring)
          fprintf (H, " REVK_SETTINGS_STRING,\n");
+      if (hastext)
+         fprintf (H, " REVK_SETTINGS_TEXT,\n");
       if (hasjson)
          fprintf (H, " REVK_SETTINGS_JSON,\n");
       if (hasoctet)
          fprintf (H, " REVK_SETTINGS_OCTET,\n");
       fprintf (H, "};\n");
+      {
+         for (d = defs; d; d = d->next)
+            if (d->define)
+               fprintf (H, "%s\n", d->define);
+            else if (d->name)
+            {
+               fprintf (H, "#define ");
+               revk_settings_ (H, d->name);
+               fprintf (H, "\n");
+            }
+      }
+      if (hasenum)
+         fprintf (H, "#define	REVK_SETTINGS_HAS_ENUM\n");
       if (hasold)
          fprintf (H, "#define	REVK_SETTINGS_HAS_OLD\n");
       if (hasunit)
@@ -593,6 +724,8 @@ main (int argc, const char *argv[])
          fprintf (H, "#define	REVK_SETTINGS_HAS_BLOB\n");
       if (hasstring)
          fprintf (H, "#define	REVK_SETTINGS_HAS_STRING\n");
+      if (hastext)
+         fprintf (H, "#define	REVK_SETTINGS_HAS_TEXT\n");
       if (hasjson)
          fprintf (H, "#define	REVK_SETTINGS_HAS_JSON\n");
       if (hasoctet)
@@ -630,12 +763,16 @@ main (int argc, const char *argv[])
                fprintf (C, ".type=REVK_SETTINGS_UNSIGNED");
             else if (!strcmp (d->type, "gpio"))
                fprintf (C, ".type=REVK_SETTINGS_UNSIGNED,.gpio=1");
+            else if (!strcmp (d->type, "enum"))
+               fprintf (C, ".type=REVK_SETTINGS_UNSIGNED,.isenum=1");
             else if (!strcmp (d->type, "bit"))
                fprintf (C, ".type=REVK_SETTINGS_BIT");
             else if (!strcmp (d->type, "blob"))
                fprintf (C, ".type=REVK_SETTINGS_BLOB");
             else if (!strcmp (d->type, "json"))
                fprintf (C, ".type=REVK_SETTINGS_JSON");
+            else if (!strcmp (d->type, "text"))
+               fprintf (C, ".type=REVK_SETTINGS_TEXT");
             else if (!strcmp (d->type, "s") || (*d->type == 'c' && is_digit (d->type[1])))
                fprintf (C, ".type=REVK_SETTINGS_STRING");
             else if (*d->type == 'o' && is_digit (d->type[1]))
@@ -674,7 +811,7 @@ main (int argc, const char *argv[])
                      fprintf (C, "\\\"");
                   for (char *p = d->def; *p; p++)
                   {
-                     if (*p == '\\' || *p == '"')
+                     if ((*p == '\\' && p[1] != 'n') || *p == '"')
                         fputc ('\\', C);
                      fputc (*p, C);
                   }
@@ -688,7 +825,7 @@ main (int argc, const char *argv[])
             else
             {                   // Bits are the only one without pointers
                fprintf (C, ",.ptr=&%s", d->name);
-               if (!strcmp (d->type, "s") || !strcmp (d->type, "blob") || !strcmp (d->type, "json"))
+               if (!strcmp (d->type, "s") || !strcmp (d->type, "text") || !strcmp (d->type, "blob") || !strcmp (d->type, "json"))
                   fprintf (C, ",.malloc=1");
                else
                {                // Code allows for a .pointer and .size but none of the types we use do that at present, as all .size are fixed in situ
@@ -704,6 +841,12 @@ main (int argc, const char *argv[])
                   fprintf (C, ",.fix=1");
                fprintf (C, ",.set=1,.flags=\"- ~↓↕⇕\"");
             }
+            if (d->enums)
+            {
+               fprintf (C, ",.enums=");
+               revk_settings_ (C, d->name);
+               fprintf (C, "_ENUMS");
+            }
             if (d->attributes)
                fprintf (C, ",%s", d->attributes);
             fprintf (C, "},\n");
@@ -714,7 +857,8 @@ main (int argc, const char *argv[])
                if (d->attributes && strstr (d->attributes, ".rtc="))
                   errx (1, "Cannot do bit in RTC %s in %s", d->name, d->fn);
             }
-            if ((!strcmp (d->type, "s") || !strcmp (d->type, "json")) && d->attributes && strstr (d->attributes, ".rtc="))
+            if ((!strcmp (d->type, "s") || !strcmp (d->type, "text") || !strcmp (d->type, "json")) && d->attributes
+                && strstr (d->attributes, ".rtc="))
                errx (1, "Cannot do char* in RTC %s in %s", d->name, d->fn);
          }
       fprintf (C, "{0}};\n");
@@ -737,6 +881,12 @@ main (int argc, const char *argv[])
             else
                typeinit (C, d->type);
             fprintf (C, ";\n");
+            if (d->type && !strcmp (d->type, "enum"))
+            {                   // Create local enums
+               fprintf (C, "const char ");
+               revk_settings_ (C, d->name);
+               fprintf (C, "_ENUMS[]=\"%s\";\n", d->enums);
+            }
          }
       // Final includes
       for (d = defs; d; d = d->next)
