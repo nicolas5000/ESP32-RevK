@@ -579,6 +579,8 @@ jo_lit (jo_t j, const char *tag, const char *lit)
 {                               // Add literal
    if (jo_write_check (j, tag))
       return;
+   if (!lit || !*lit || !strcmp (lit, "nan") || !strcmp (lit, "inf") || !strcmp (lit, "-inf"))
+      lit = "null";
    while (*lit)
       jo_write (j, *lit++);
 }
@@ -670,8 +672,6 @@ jo_litf (jo_t j, const char *tag, const char *format, ...)
    va_start (ap, format);
    vsnprintf (temp, sizeof (temp), format, ap);
    va_end (ap);
-   if (!strcmp (temp, "nan"))
-      strcpy (temp, "null");
    jo_lit (j, tag, temp);
 }
 
@@ -1185,7 +1185,7 @@ jo_find (jo_t j, const char *path)
          {
             if (!n--)
                break;
-            t=jo_skip (j);
+            t = jo_skip (j);
          }
          if (t == JO_OBJECT && *path == '.')
          {
