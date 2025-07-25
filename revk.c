@@ -1828,16 +1828,44 @@ void
 revk_blink_init (void)
 {                               // LED blinking initialisation
 #ifdef CONFIG_REVK_LED_STRIP
-   if (blink[0].set && blink[1].set && blink[0].num == blink[1].num)
+   if (
+#ifdef	CONFIG_REVK_BLINK_WS2812_DEF
+         blink.set
+#else
+         blink[0].set && blink[1].set && blink[0].num == blink[1].num
+#endif
+      )
    {
-      if (!(gpio_ok (blink[0].num) & 1))
+      if (!(gpio_ok (
+#ifdef	CONFIG_REVK_BLINK_WS2812_DEF
+                       blink.num
+#else
+                       blink[0].num
+#endif
+            ) & 1))
       {
-         ESP_LOGE (TAG, "Not using LED GPIO %d", blink[0].num);
+         ESP_LOGE (TAG, "Not using LED GPIO %d",
+#ifdef	CONFIG_REVK_BLINK_WS2812_DEF
+                   blink.num
+#else
+                   blink[0].num
+#endif
+            );
+#ifdef	CONFIG_REVK_BLINK_WS2812_DEF
+         blink.set = 0;
+#else
          blink[0].set = 0;
+#endif
       } else
       {                         // Initialise the LED strip for one LED. This can, however, be pre-set by the app where we will refresh every 10th second and set 1st LED for status
          led_strip_config_t strip_config = {
-            .strip_gpio_num = (blink[0].num),
+            .strip_gpio_num = (
+#ifdef	CONFIG_REVK_BLINK_WS2812_DEF
+                                 blink.num
+#else
+                                 blink[0].num
+#endif
+               ),
             .max_leds = 1,      // The number of LEDs in the strip,
 #ifdef	LED_STRIP_COLOR_COMPONENT_FMT_GRB
             .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
@@ -1845,7 +1873,13 @@ revk_blink_init (void)
             .led_pixel_format = LED_PIXEL_FORMAT_GRB,
 #endif
             .led_model = LED_MODEL_WS2812,      // LED strip model
-            .flags.invert_out = blink[0].invert,        // whether to invert the output signal (useful when your hardware has a level inverter)
+            .flags.invert_out =
+#ifdef	CONFIG_REVK_BLINK_WS2812_DEF
+               blink.invert
+#else
+               blink[0].invert
+#endif
+               ,                // whether to invert the output signal (useful when your hardware has a level inverter)
          };
          led_strip_rmt_config_t rmt_config = {
             .clk_src = RMT_CLK_SRC_DEFAULT,     // different clock source can lead to different power consumption
@@ -1856,6 +1890,10 @@ revk_blink_init (void)
       }
    } else
 #endif
+#ifdef	CONFIG_REVK_BLINK_WS2812_DEF
+   {
+   }
+#else
       for (int b = 0; b < sizeof (blink) / sizeof (*blink); b++)
       {
          if (blink[b].set)
@@ -1870,6 +1908,7 @@ revk_blink_init (void)
             revk_gpio_output (blink[b], 0);
          }
       }
+#endif
    revk_blink_do ();
 }
 #endif
@@ -1878,9 +1917,22 @@ revk_blink_init (void)
 void
 revk_blink_do (void)
 {                               // Drive LED
-   if (blink[0].set)
+   if (
+#ifdef  CONFIG_REVK_BLINK_WS2812_DEF
+         blink.set
+#else
+         blink[0].set
+#endif
+      )
    {
       uint32_t rgb = revk_blinker ();
+#ifdef  CONFIG_REVK_BLINK_WS2812_DEF
+      if (revk_strip)
+      {
+         revk_led (revk_strip, 0, 255, rgb);
+         led_strip_refresh (revk_strip);
+      }
+#else
       if (!blink[1].set)
          revk_gpio_set (blink[0], (rgb >> 31) & 1);
       else if (blink[0].num != blink[1].num)
@@ -1895,6 +1947,7 @@ revk_blink_do (void)
          revk_led (revk_strip, 0, 255, rgb);
          led_strip_refresh (revk_strip);
       }
+#endif
 #endif
    }
 }

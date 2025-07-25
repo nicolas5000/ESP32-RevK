@@ -31,11 +31,18 @@ menu "RevK"
 		If blinking supported at all, including blink[3] setting
 
 	config REVK_BLINK_DEF
-	bool "Blink LED settings in library settings"
+	bool "Blink LED GPIO settings in library settings"
 	default y
 	depends on REVK_BLINK_SUPPORT
         help
 		If blinking defined in library settings.
+
+	config REVK_BLINK_WS2812_DEF
+	bool "Blink LED is WS2812 single GPIO setting"
+	default n
+	depends on REVK_LED_STRIP
+        help
+		If blink setting is single GPIO
 
 	config REVK_BLINK_LIB
 	bool "Blink LED update done in library"

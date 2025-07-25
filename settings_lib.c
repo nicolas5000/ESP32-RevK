@@ -1018,46 +1018,56 @@ revk_settings_load (const char *tag, const char *appname)
                } else
                {
                   for (s = revk_settings;
-                       s->len && !(s->revk == revk && s->array && s->len + 1 == l && !memcmp (s->name, info.key, s->len)
-                                   && (info.key[s->len] & 0x80)); s++);
+                       s->len && !(s->revk == revk && !s->array && s->len + 1 == l && !memcmp (s->name, info.key, s->len)
+                                   && info.key[s->len] == 0x80); s++);
                   if (s->len)
-                     err = nvs_get (s, info.key, index = info.key[s->len] - 0x80);      // Array match, new
-                  else
+                  {             // Stored as array and not now array
+                     err = nvs_get (s, info.key, 0);
+                     addzap (s, 0);
+                  } else
                   {
                      for (s = revk_settings;
-                          s->len && !(s->revk == revk && s->array && s->len < l && !memcmp (s->name, info.key, s->len)
-                                      && isdigit ((int) info.key[s->len])); s++);
+                          s->len && !(s->revk == revk && s->array && s->len + 1 == l && !memcmp (s->name, info.key, s->len)
+                                      && (info.key[s->len] & 0x80)); s++);
                      if (s->len)
-                     {          // Array match, old
-                        index = atoi (info.key + s->len) - 1;
-                        if (index >= 0 && index < s->array)
-                        {
-                           err = nvs_get (s, info.key, atoi (info.key + s->len) - 1);
-                           addzap (s, index);
-                        } else
-                           addzap (NULL, 0);
-                     } else
+                        err = nvs_get (s, info.key, index = info.key[s->len] - 0x80);   // Array match, new
+                     else
                      {
-#ifdef	REVK_SETTINGS_HAS_OLD
-                        if (l && (info.key[l - 1] & 0x80))
-                        {       // Array (new style)
-                           for (s = revk_settings;
-                                s->len && !(s->revk == revk && s->old && s->array && strlen (s->old) == l - 1
-                                            && !strncmp (s->old, info.key, l - 1)); s++);
-                           if (s->len)
-                              err = nvs_get (s, info.key, index = info.key[l - 1] - 0x80);      // Exact match (old)
+                        for (s = revk_settings;
+                             s->len && !(s->revk == revk && s->array && s->len < l && !memcmp (s->name, info.key, s->len)
+                                         && isdigit ((int) info.key[s->len])); s++);
+                        if (s->len)
+                        {       // Array match, old
+                           index = atoi (info.key + s->len) - 1;
+                           if (index >= 0 && index < s->array)
+                           {
+                              err = nvs_get (s, info.key, atoi (info.key + s->len) - 1);
+                              addzap (s, index);
+                           } else
+                              addzap (NULL, 0);
                         } else
-                        {       // Non array
-                           for (s = revk_settings;
-                                s->len && !(s->revk == revk && s->old && !s->array && !strcmp (s->old, info.key)); s++);
-                           if (s->len)
-                              err = nvs_get (s, info.key, 0);   // Exact match (old)
-                        }
-                        if (!s->len)
-#endif
                         {
-                           addzap (NULL, 0);
-                           err = "Not matched";
+#ifdef	REVK_SETTINGS_HAS_OLD
+                           if (l && (info.key[l - 1] & 0x80))
+                           {    // Array (new style)
+                              for (s = revk_settings;
+                                   s->len && !(s->revk == revk && s->old && s->array && strlen (s->old) == l - 1
+                                               && !strncmp (s->old, info.key, l - 1)); s++);
+                              if (s->len)
+                                 err = nvs_get (s, info.key, index = info.key[l - 1] - 0x80);   // Exact match (old)
+                           } else
+                           {    // Non array
+                              for (s = revk_settings;
+                                   s->len && !(s->revk == revk && s->old && !s->array && !strcmp (s->old, info.key)); s++);
+                              if (s->len)
+                                 err = nvs_get (s, info.key, 0);        // Exact match (old)
+                           }
+                           if (!s->len)
+#endif
+                           {
+                              addzap (NULL, 0);
+                              err = "Not matched";
+                           }
                         }
                      }
                   }
