@@ -2381,7 +2381,7 @@ revk_boot (app_callback_t * app_callback_cb)
 #if	CONFIG_REVK_GPIO_POWER >= 0
    gpio_set_level (CONFIG_REVK_GPIO_POWER, 1);
    gpio_set_direction (CONFIG_REVK_GPIO_POWER, GPIO_MODE_OUTPUT);
-
+   gpio_hold_dis(CONFIG_REVK_GPIO_POWER);
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT
    {                            // Safe GPIO
