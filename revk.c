@@ -2379,9 +2379,10 @@ void
 revk_boot (app_callback_t * app_callback_cb)
 {                               /* Start the revk task, use __FILE__ and __DATE__ and __TIME__ to set task name and version ID */
 #if	CONFIG_REVK_GPIO_POWER >= 0
+   gpio_hold_dis (CONFIG_REVK_GPIO_POWER);
    gpio_set_level (CONFIG_REVK_GPIO_POWER, 1);
    gpio_set_direction (CONFIG_REVK_GPIO_POWER, GPIO_MODE_OUTPUT);
-   gpio_hold_dis(CONFIG_REVK_GPIO_POWER);
+   ESP_LOGE (TAG, "Power on GPIO %d", CONFIG_REVK_GPIO_POWER);
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT
    {                            // Safe GPIO
