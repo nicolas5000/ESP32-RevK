@@ -2388,8 +2388,11 @@ revk_boot (app_callback_t * app_callback_cb)
    {                            // Safe GPIO
       gpio_config_t i = {.mode = GPIO_MODE_INPUT };
       for (uint8_t p = 0; p <= 48; p++)
-         if (gpio_ok (p) == 3)  // Input and output, not serial
-            i.pin_bit_mask |= (1LL << p);
+#if	CONFIG_REVK_GPIO_POWER >= 0
+         if (p != CONFIG_REVK_GPIO_POWER)
+#endif
+            if (gpio_ok (p) == 3)       // Input and output, not serial
+               i.pin_bit_mask |= (1LL << p);
       //ESP_LOGE (TAG, "Input to read level %016llX", i.pin_bit_mask);
       gpio_config (&i);
       gpio_config_t u = {.pull_up_en = 1,.mode = GPIO_MODE_DISABLE };
