@@ -1718,9 +1718,9 @@ revk_rgb (char c)
    uint8_t r = (u == 'R' ? 0xFF : u == 'Y' || u == 'M' ? 0xFF / 2 : u == 'W' ? 0xFF / 3 : 0);
    uint8_t g = (u == 'G' ? 0xFF : u == 'Y' || u == 'C' ? 0xFF / 2 : u == 'W' ? 0xFF / 3 : 0);
    uint8_t b = (u == 'B' ? 0xFF : u == 'M' || u == 'C' ? 0xFF / 2 : u == 'W' ? 0xFF / 3 : 0);
+#endif
    if (u == 'L')
       r = g = b = 0x3F;         // Low level
-#endif
    if (islower (c))
    {                            // Dim
       r /= 2;
