@@ -1720,7 +1720,7 @@ revk_rgb (char c)
    uint8_t b = (u == 'B' ? 0xFF : u == 'M' || u == 'C' ? 0xFF / 2 : u == 'W' ? 0xFF / 3 : 0);
 #endif
    if (u == 'L')
-      r = g = b = 0x1F;         // Low level
+      r = g = b = 0x3F;         // Low level
    if (islower (c))
    {                            // Dim
       r /= 2;
