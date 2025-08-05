@@ -62,9 +62,9 @@ gpio	ap.gpio		CONFIG_REVK_APGPIO	.revk			// Start AP on GPIO
 
 #ifdef  CONFIG_REVK_MQTT
 s	mqtt.host	CONFIG_REVK_MQTTHOST	.revk	.array=CONFIG_REVK_MQTT_CLIENTS .hide			// MQTT hostname
-u16	mqtt.port	CONFIG_REVK_MQTTPORT	.revk	.array=CONFIG_REVK_MQTT_CLIENTS .hide			// MQTT port
-s	mqtt.user	CONFIG_REVK_MQTTUSER	.revk .array=CONFIG_REVK_MQTT_CLIENTS .hide			// MQTT username
-s	mqtt.pass	CONFIG_REVK_MQTTPASS	.revk	.array=CONFIG_REVK_MQTT_CLIENTS	.secret .hide	// MQTT password
+u16	mqtt.port	CONFIG_REVK_MQTTPORT	.revk	.array=CONFIG_REVK_MQTT_CLIENTS				// MQTT port
+s	mqtt.user	CONFIG_REVK_MQTTUSER	.revk	.array=CONFIG_REVK_MQTT_CLIENTS .hide			// MQTT username
+s	mqtt.pass	CONFIG_REVK_MQTTPASS	.revk	.array=CONFIG_REVK_MQTT_CLIENTS	.secret .hide		// MQTT password
 blob	mqtt.cert	CONFIG_REVK_MQTTCERT	.revk	.array=CONFIG_REVK_MQTT_CLIENTS	.base64 		// MQTT CA certificate
 #endif  
 blob	client.key				.revk	.base64 	// Client Key (OTA and MQTT TLS)
