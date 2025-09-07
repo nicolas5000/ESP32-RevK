@@ -4847,6 +4847,10 @@ revk_mqtt_close (const char *reason)
          jo_bool (j, "up", 0);
          if (restart_time)
             jo_string (j, "reason", restart_reason);
+#ifdef	CONFIG_REVK_STATE_EXTRA
+         extern void revk_state_extra (jo_t);
+         revk_state_extra (j);
+#endif
          revk_state_clients (NULL, &j, 1 << client);
          lwmqtt_end (&mqtt_client[client]);
          ESP_LOGE (TAG, "MQTT%d Closed", client);
