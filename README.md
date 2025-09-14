@@ -20,7 +20,7 @@ Most of my designs have USB leads, but they also have a TC2030 port (see image o
 
 My various code typically has a `release` and `betarelease` directory. In these are several `.bin` files.
 
-- You can bnuild code with the whole ESP IDF environment, and use `idf.py` to flash.
+- You can build code with the whole ESP IDF environment, and use `idf.py` to flash.
 - You can also use `esptool` to flash, but there is a simpler way for most people using a web page and Chrome browser.
 - Or, there is a simpler way using Chrome!  
 
