@@ -12,7 +12,7 @@ Dev guide: [Details for apps using this library](Manuals/revk-dev.md)
 
 ## Flashing code
 
-<img width="25%" align=right src="https://github.com/user-attachments/assets/0f6722e2-ea72-44d5-bd8a-17f9f7011313" />
+<img width="25%" align=right src="https://github.com/user-attachments/assets/995e0a3a-6be8-4e3d-b766-db0000c52e54" />
 
 The library is the basis for all of my ESP32 code, and provides a common infrastructure for settings, and software upgades, and even the basic building process usinmg `make` built around the `idf.py` (cmake) build system in ESP IDF.
 
