@@ -30,8 +30,8 @@ The code to load, lets call the app `MyApp`, and assume we want to flash for the
 
 |Offset|File|
 |----|----|
-|0x0|MyApp-S3-MINI-N4-R4-bootloader.bin|
-|0x8000|MyApp-S3-MINI-N4-R4-partition-table.bin|
-|0xD000|MyApp-S3-MINI-N4-R4-ota_data_initial.bin|
-|0x10000|MyApp-S3-MINI-N4-R4.bin|
+|0x0|MyApp-S3-MINI-N4-R2-bootloader.bin|
+|0x8000|MyApp-S3-MINI-N4-R2-partition-table.bin|
+|0xD000|MyApp-S3-MINI-N4-R2-ota_data_initial.bin|
+|0x10000|MyApp-S3-MINI-N4-R2.bin|
 
