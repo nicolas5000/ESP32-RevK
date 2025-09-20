@@ -530,6 +530,7 @@ mesh_task (void *pvParameters)
                send_ack ();
                if (!ota_size)
                {
+                  ota_percent = 0;
                   ota_size = (data.data[1] << 16) + (data.data[2] << 8) + data.data[3];
                   ota_partition = esp_ota_get_next_update_partition (esp_ota_get_running_partition ());
                   ESP_LOGI (TAG, "Start flash %d", ota_size);
@@ -4424,6 +4425,7 @@ ota_task (void *pvParameters)
             ota_percent = -3;
          } else
          {
+            ota_percent = 0;
             jo_t j = jo_make (NULL);
             jo_string (j, "partition", ota_partition->label);
             jo_stringf (j, "start", "%X", ota_partition->address);
