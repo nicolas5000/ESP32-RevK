@@ -3829,7 +3829,11 @@ revk_web_settings (httpd_req_t * req)
          hr ();
    }
    revk_web_send (req, "</table>");
-   if (!shutdown && page == -1 && (!*password || loggedin))
+   if (!shutdown && page == -1
+#ifdef  CONFIG_REVK_SETTINGS_PASSWORD
+       && (!*password || loggedin)
+#endif
+      )
    {
       if (revk_link_down ())
          revk_web_send (req, "<input name=_save type=submit value='Save'>");
