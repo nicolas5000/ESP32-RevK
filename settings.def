@@ -27,7 +27,7 @@ u32	watchdogtime	CONFIG_REVK_WATCHDOG	.revk			// Watchdog (seconds)
 u16	usbuptime	CONFIG_REVK_USBUPTIME	.revk			// USB  turns off after this many seconds
 #endif
 #ifdef  CONFIG_IDF_TARGET_ESP32S3
-gpio	factorygpio	-21			.revk			// Factory reset GPIO (press 3 times)
+gpio	factorygpio	CONFIG_REVK_RESET	.revk			// Factory reset GPIO (press 3 times)
 #else
 gpio	factorygpio				.revk			// Factory reset GPIO (press 3 times)
 #endif

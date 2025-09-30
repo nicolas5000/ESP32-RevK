@@ -24,6 +24,12 @@ menu "RevK"
 	help
 		GPIO to be set high at start of code to maintain power on (-1 for not used)
 
+	config REVK_GPIO_RESET
+	string	"GPIO for reset"
+	default "-21"
+	help
+		GPIO for factory reset
+
 	config REVK_BLINK_SUPPORT
 	bool "LED blinking support"
 	default y
