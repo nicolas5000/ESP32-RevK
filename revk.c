@@ -1997,24 +1997,10 @@ task (void *pvParameters)
    {                            /* Idle */
       if (!b.wdt_test && watchdogtime)
          esp_task_wdt_reset ();
-#ifdef	CONFIG_REVK_ATE
-#ifdef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
-      if (usb_serial_jtag_is_connected ())
       {
-         char temp[100];
-         while (1)
-         {
-            int l = usb_serial_jtag_read_bytes (temp, sizeof (temp), 1);
-            if (l <= 0)
-               break;
-            for (int q = 0; q < l; q++)
-               if (temp[q] < ' ')
-                  temp[q] = 'x';
-            printf ("RX: [%d] %.*s\n", l, l, temp);
-         }
+	      int c=getchar();
+	      if(c>0)ESP_LOGE(TAG,"c=%d",c);
       }
-#endif
-#endif
       {                         // Fast (once per 100ms)
          int64_t now = esp_timer_get_time ();
          if (now < tick)
@@ -2437,19 +2423,6 @@ revk_boot (app_callback_t * app_callback_cb)
 #endif
    const esp_app_desc_t *app = esp_app_get_description ();
 #ifdef	CONFIG_REVK_ATE
-#ifdef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
-   if (usb_serial_jtag_is_connected ())
-   {
-      usb_serial_jtag_driver_config_t usb_serial_jtag_config = {
-         .rx_buffer_size = 1024,
-         .tx_buffer_size = 16,
-      };
-      if (usb_serial_jtag_driver_install (&usb_serial_jtag_config))
-         ESP_LOGE (TAG, "JTAG install fail");
-   }
-#else
-#warning CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG not set, and prtobably what you need for ATE
-#endif
    printf ("\nID: %s%s %s %s %s\n", app->project_name, revk_build_suffix, app->version, app->date, app->time);
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT

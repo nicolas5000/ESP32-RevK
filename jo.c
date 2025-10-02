@@ -909,7 +909,7 @@ jo_here (jo_t j)
 
 jo_type_t
 jo_next (jo_t j)
-{                               // Move to next value, this validates what we are skipping. A tag and its value are separate
+{                               // Move to next value, this validates what we are kipping. A tag and its value are separate
    int c;
    if (!j || !j->parse || j->err)
       return JO_END;
