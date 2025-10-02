@@ -257,6 +257,7 @@ led_strip_handle_t revk_strip = NULL;
 static struct
 {                               // Flags
    uint8_t die:1;               // Final die
+   uint8_t ate:1;               // In ATE mode
    uint8_t gotipv6:1;           // Just got an IPv6
    uint8_t setting_dump_requested:2;
    uint8_t wdt_test:1;
@@ -1983,6 +1984,12 @@ task (void *pvParameters)
    {                            /* Idle */
       if (!b.wdt_test && watchdogtime)
          esp_task_wdt_reset ();
+      if (!b.ate)               //&&now<3)
+      {                         // stdin - check for ATE
+         char c = 0;
+         if (read (0, &c, 1) == 1)
+            ESP_LOGE (TAG, "Char %c", c);
+      }
       {                         // Fast (once per 100ms)
          int64_t now = esp_timer_get_time ();
          if (now < tick)
@@ -5569,7 +5576,7 @@ revk_mqtt_unsub (int client, const char *topic)
    }
    if (lwmqtt_connected (mqtt_client[client]))
       lwmqtt_unsubscribe (mqtt_client[client], topic);
-   ESP_LOGD (TAG, "Deregister MQTT %s", topic);
+   ESP_LOGD (TAG, "De-register MQTT %s", topic);
 }
 
 #if	defined(CONFIG_GFX_WIDTH) && ! defined(CONFIG_GFX_BUILD_SUFFIX_GFXNONE) // GFX installed
