@@ -1987,7 +1987,7 @@ task (void *pvParameters)
       if (!b.ate)               //&&now<3)
       {                         // stdin - check for ATE
          char c = 0;
-         if (read (0, &c, 1) == 1)
+         if (read (STDIN_FILENO, &c, 1) == 1) // should be non blocking
             ESP_LOGE (TAG, "Char %c", c);
       }
       {                         // Fast (once per 100ms)
