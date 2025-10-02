@@ -2384,6 +2384,16 @@ gpio_ok (int8_t p)
 #endif
 }
 
+void revk_ate_pass(void)
+{
+	printf("ATE: PASS\n");
+}
+
+void revk_ate_fail(void)
+{
+	printf("ATE: FAIL\n");
+}
+
 /* External functions */
 void
 revk_boot (app_callback_t * app_callback_cb)
