@@ -52,14 +52,6 @@ static const char __attribute__((unused)) * TAG = "RevK";
 #include <math.h>
 #endif
 
-#ifdef	CONFIG_REVK_ATE
-#ifdef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
-#include "driver/usb_serial_jtag.h"
-#include "esp_vfs_usb_serial_jtag.h"
-#include "esp_vfs_dev.h"
-#endif
-#endif
-
 #include "esp8266_rtc_io_compat.h"
 #include "esp8266_ota_compat.h"
 #include "esp8266_flash_compat.h"
@@ -2423,6 +2415,11 @@ revk_boot (app_callback_t * app_callback_cb)
 #endif
    const esp_app_desc_t *app = esp_app_get_description ();
 #ifdef	CONFIG_REVK_ATE
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+#ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#warning	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
+#endif
+#endif
    printf ("\nID: %s%s %s %s %s\n", app->project_name, revk_build_suffix, app->version, app->date, app->time);
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT

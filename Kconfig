@@ -8,7 +8,7 @@ menu "RevK"
 
 	config REVK_ATE
         bool "ATE / Flasher enable"
-        default n
+        default y
         help
 		Messages for use of ATE / Flasher
 
