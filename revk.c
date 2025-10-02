@@ -1988,7 +1988,7 @@ task (void *pvParameters)
       {                         // stdin - check for ATE
          char c = 0;
          if (read (STDIN_FILENO, &c, 1) == 1) // should be non blocking
-            ESP_LOGE (TAG, "Char %c", c);
+		 printf("CHAR: %c",c);
       }
       {                         // Fast (once per 100ms)
          int64_t now = esp_timer_get_time ();
