@@ -52,6 +52,14 @@ static const char __attribute__((unused)) * TAG = "RevK";
 #include <math.h>
 #endif
 
+#ifdef	CONFIG_REVK_ATE
+#ifdef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#include "driver/usb_serial_jtag.h"
+#include "esp_vfs_usb_serial_jtag.h"
+#include "esp_vfs_dev.h"
+#endif
+#endif
+
 #include "esp8266_rtc_io_compat.h"
 #include "esp8266_ota_compat.h"
 #include "esp8266_flash_compat.h"
@@ -257,7 +265,6 @@ led_strip_handle_t revk_strip = NULL;
 static struct
 {                               // Flags
    uint8_t die:1;               // Final die
-   uint8_t ate:1;               // In ATE mode
    uint8_t gotipv6:1;           // Just got an IPv6
    uint8_t setting_dump_requested:2;
    uint8_t wdt_test:1;
@@ -1448,6 +1455,9 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                REVK_ERR_CHECK (esp_wifi_sta_get_ap_info (&ap));
                // Done as Error level as really useful if logging at all
                ESP_LOGE (TAG, "Got IPv4 " IPSTR " from %s", IP2STR (&event->ip_info.ip), (char *) ap.ssid);
+#ifdef	CONFIG_REVK_ATE
+               printf ("IP: " IPSTR "\n", IP2STR (&event->ip_info.ip));
+#endif
                if (sta_netif)
                {
 #if     ESP_IDF_VERSION_MAJOR > 5 || ESP_IDF_VERSION_MAJOR == 5 && ESP_IDF_VERSION_MINOR > 0
@@ -1497,6 +1507,9 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                char ip[40];
                inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, sizeof (ip));
                ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, ip, event->ip6_info.ip.zone);
+#ifdef	CONFIG_REVK_ATE
+               printf ("IP: %s\n", ip);
+#endif
                if (!event->ip6_info.ip.zone)
                   b.gotipv6 = 1;
 #ifdef  CONFIG_REVK_WIFI
@@ -1984,12 +1997,24 @@ task (void *pvParameters)
    {                            /* Idle */
       if (!b.wdt_test && watchdogtime)
          esp_task_wdt_reset ();
-      if (!b.ate)               //&&now<3)
-      {                         // stdin - check for ATE
-         char c = 0;
-         if (read (STDIN_FILENO, &c, 1) == 1) // should be non blocking
-		 printf("CHAR: %c",c);
+#ifdef	CONFIG_REVK_ATE
+#ifdef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+      if (usb_serial_jtag_is_connected ())
+      {
+         char temp[100];
+         while (1)
+         {
+            int l = usb_serial_jtag_read_bytes (temp, sizeof (temp), 1);
+            if (l <= 0)
+               break;
+            for (int q = 0; q < l; q++)
+               if (temp[q] < ' ')
+                  temp[q] = 'x';
+            printf ("RX: [%d] %.*s\n", l, l, temp);
+         }
       }
+#endif
+#endif
       {                         // Fast (once per 100ms)
          int64_t now = esp_timer_get_time ();
          if (now < tick)
@@ -2384,14 +2409,20 @@ gpio_ok (int8_t p)
 #endif
 }
 
-void revk_ate_pass(void)
+void
+revk_ate_pass (void)
 {
-	printf("ATE: PASS\n");
+#ifdef	CONFIG_REVK_ATE
+   printf ("ATE: PASS\n");
+#endif
 }
 
-void revk_ate_fail(void)
+void
+revk_ate_fail (void)
 {
-	printf("ATE: FAIL\n");
+#ifdef	CONFIG_REVK_ATE
+   printf ("ATE: FAIL\n");
+#endif
 }
 
 /* External functions */
@@ -2403,6 +2434,23 @@ revk_boot (app_callback_t * app_callback_cb)
    gpio_set_level (CONFIG_REVK_GPIO_POWER, 1);
    gpio_set_direction (CONFIG_REVK_GPIO_POWER, GPIO_MODE_OUTPUT);
    ESP_LOGE (TAG, "Power on GPIO %d", CONFIG_REVK_GPIO_POWER);
+#endif
+   const esp_app_desc_t *app = esp_app_get_description ();
+#ifdef	CONFIG_REVK_ATE
+#ifdef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+   if (usb_serial_jtag_is_connected ())
+   {
+      usb_serial_jtag_driver_config_t usb_serial_jtag_config = {
+         .rx_buffer_size = 1024,
+         .tx_buffer_size = 16,
+      };
+      if (usb_serial_jtag_driver_install (&usb_serial_jtag_config))
+         ESP_LOGE (TAG, "JTAG install fail");
+   }
+#else
+#warning CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG not set, and prtobably what you need for ATE
+#endif
+   printf ("\nID: %s%s %s %s %s\n", app->project_name, revk_build_suffix, app->version, app->date, app->time);
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT
    {                            // Safe GPIO
@@ -2534,7 +2582,6 @@ revk_boot (app_callback_t * app_callback_cb)
       ESP_LOGE (TAG, "NVS error %s", esp_err_to_name (e));
    else
       ESP_LOGI (TAG, "nvs_open_from_partition");
-   const esp_app_desc_t *app = esp_app_get_description ();
 #ifndef	CONFIG_REVK_OLD_SETTINGS
    revk_settings_load (TAG, app->project_name);
 #else

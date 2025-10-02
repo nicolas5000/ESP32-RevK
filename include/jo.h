@@ -141,6 +141,9 @@ void jo_null (jo_t, const char *tag);
 // Here returns where we are in the parse
 jo_type_t jo_here (jo_t);
 
+// Position in original JSON
+int jo_pos(jo_t);
+
 // Move to next element we can parse (validating what we move over as we go)
 jo_type_t jo_next (jo_t);
 

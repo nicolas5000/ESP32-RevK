@@ -830,6 +830,12 @@ jo_ws (jo_t j)
    return c;
 }
 
+int jo_pos(jo_t j)
+{
+   if (!j || j->err) return -1;
+   return j->ptr;
+}
+
 jo_type_t
 jo_here (jo_t j)
 {                               // Return what type of thing we are at - we are always at a value of some sort, which has a tag if we are in an object
