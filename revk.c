@@ -1987,7 +1987,6 @@ task (void *pvParameters)
    }
    revk_gpio_input (factorygpio);
    b.factorywas = revk_gpio_get (factorygpio);
-   const esp_app_desc_t *app = esp_app_get_description ();
 #ifdef	CONFIG_REVK_ATE
 #ifdef  CONFIG_IDF_TARGET_ESP32S3
 #ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
@@ -1995,8 +1994,9 @@ task (void *pvParameters)
 #endif
 #endif
    {
+      const esp_app_desc_t *app = esp_app_get_description ();
       char temp[20];
-      if (revk_build_date (temp))
+      if (revk_build_date_app (app, temp))
          printf ("\nID: %s%s %s %s\n", app->project_name, revk_build_suffix, app->version, temp);
    }
    jo_t ate = NULL;
