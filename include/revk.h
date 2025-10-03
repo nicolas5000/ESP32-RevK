@@ -197,7 +197,7 @@ const char *revk_restart (int delay, const char *fmt, ...);     // Restart clean
 const char *revk_ota (const char *host, const char *target);    // OTA and restart cleanly (target NULL for self as root node)
 uint32_t revk_shutting_down (const char **);    // If we are shutting down (how many seconds to go) - sets reason if not null
 const char *revk_build_date (esp_app_desc_t *app,char d[20]);       // Get build date ISO formatted
-#define revk_build_date revk_build_date_app(esp_app_get_description(),d)
+#define revk_build_date(d) revk_build_date_app(esp_app_get_description(),d)
 int8_t revk_ota_progress (void);        // Progress (-2=up to date, -1=not, 0-100 is progress, 101=done)
 
 #ifdef	CONFIG_REVK_MQTT
