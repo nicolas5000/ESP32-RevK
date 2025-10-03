@@ -5026,7 +5026,7 @@ jo_make (const char *node)
 }
 
 const char *
-revk_build_date_app (esp_app_desc_t * app, char d[20])
+revk_build_date_app (const esp_app_desc_t * app, char d[20])
 {
    if (!d)
       return NULL;
