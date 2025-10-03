@@ -26,6 +26,7 @@
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
 
+#include "esp_app_desc.h"
 #include "esp_log.h"
 #ifdef	CONFIG_REVK_MQTT
 #include "lwmqtt.h"
