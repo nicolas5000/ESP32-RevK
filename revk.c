@@ -1446,9 +1446,10 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                wifi_ap_record_t ap = { };
                REVK_ERR_CHECK (esp_wifi_sta_get_ap_info (&ap));
                // Done as Error level as really useful if logging at all
-               ESP_LOGE (TAG, "Got IPv4 " IPSTR " from %s", IP2STR (&event->ip_info.ip), (char *) ap.ssid);
 #ifdef	CONFIG_REVK_ATE
                printf ("IP: " IPSTR "\n", IP2STR (&event->ip_info.ip));
+#else
+               ESP_LOGE (TAG, "Got IPv4 " IPSTR " from %s", IP2STR (&event->ip_info.ip), (char *) ap.ssid);
 #endif
                if (sta_netif)
                {
@@ -1498,9 +1499,10 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                // Done as Error level as really useful if logging at all
                char ip[40];
                inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, sizeof (ip));
-               ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, ip, event->ip6_info.ip.zone);
 #ifdef	CONFIG_REVK_ATE
                printf ("IP: %s\n", ip);
+#else
+               ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, ip, event->ip6_info.ip.zone);
 #endif
                if (!event->ip6_info.ip.zone)
                   b.gotipv6 = 1;
