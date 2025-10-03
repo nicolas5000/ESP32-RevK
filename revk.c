@@ -4669,11 +4669,14 @@ revk_upgrade_check (const char *val)
       ret = -7;
    if (!ret)
    {                            // Check version
+      const esp_app_desc_t *app = esp_app_get_description ();
+      char appbuild[20],
+        databuild[20];
+      revk_build_date_app (app, appbuild);
+      revk_build_date_app (&data, databuild);
       jo_stringf (j, "version", "%.32s", data.version);
       jo_stringf (j, "project", "%.32s", data.project_name);
-      jo_stringf (j, "time", "%.16s", data.time);
-      jo_stringf (j, "date", "%.16s", data.date);
-      const esp_app_desc_t *app = esp_app_get_description ();
+      jo_string (j, "build", databuild);
       if (strncmp (app->version, data.version, sizeof (data.version)))
       {
          ret = 1;               // Different version
@@ -4682,14 +4685,10 @@ revk_upgrade_check (const char *val)
       {
          ret = 2;               // Different project name
          jo_string (j, "was-project", app->project_name);
-      } else if (strncmp (app->date, data.date, sizeof (data.date)))
+      } else if (strcmp (appbuild, databuild))
       {
          ret = 4;               // Different date
-         jo_string (j, "was-date", app->date);
-      } else if (strncmp (app->time, data.time, sizeof (data.time)))
-      {
-         ret = 4;               // Different time
-         jo_string (j, "was-time", app->time);
+         jo_string (j, "was-build", appbuild);
       }
       if (!ret)
          jo_bool (j, "up-to-date", 1);
@@ -5027,7 +5026,10 @@ jo_make (const char *node)
 const char *
 revk_build_date_app (esp_app_desc_t * app, char d[20])
 {
-   if (!d || !app)
+   if (!d)
+      return NULL;
+   *d = 0;
+   if (!app)
       return NULL;
    const char *v = app->date;
    if (!v || strlen (v) != 11)
