@@ -27,6 +27,8 @@ struct jo_s
    uint8_t tagok:1;             // We have skipped an expected tag already in parsing
    uint8_t null:1;              // We have a null termination (last character stored was 0)
    uint8_t lt:1;                // Last character stored was <
+   uint8_t quote:1;             // In quotes
+   uint8_t backslash:1;         // In following backslash
    uint8_t level;               // Current level
    uint8_t o[(JO_MAX + 7) / 8]; // Bit set at each level if level is object, else it is array
 };
@@ -82,6 +84,40 @@ jo_store (jo_t j, uint8_t c)
    j->buf[j->ptr] = c;
    j->null = (c ? 0 : 1);
    j->lt = (c == '<' ? 1 : 0);
+   if (!c)
+   {
+      if (j->quote)
+         j->err = "Unclosed quote";
+      else if (j->level)
+         j->err = "Unclosed";
+   } else if (j->quote)
+   {
+      if (j->backslash)
+         j->backslash = 0;
+      else if (c == '\\')
+         j->backslash = 1;
+      else if (c == '"')
+         j->quote = 0;
+   } else if (c == '"')
+      j->quote = 1;
+   else if (c == '{' || c == '[')
+   {
+      if (j->level >= JO_MAX)
+         j->err = "To many levels";
+      else
+      {
+         if (c == '{')
+            j->o[j->level / 8] |= (1 << (j->level & 7));
+         else
+            j->o[j->level / 8] &= ~(1 << (j->level & 7));
+         j->level++;
+      }
+   }
+   else if (c == '}' || c == ']')
+   {
+	   if(!j->level)j->err="To many closes";
+	   else j->level--;
+   }
 }
 
 static inline void
@@ -90,6 +126,18 @@ jo_write (jo_t j, uint8_t c)
    jo_store (j, c);
    if (j && !j->err)
       j->ptr++;
+}
+
+int
+jo_char (jo_t j, const char c)
+{                               // Build a character at a time with minimal syntax check, return level (+1 in quotes) or negative for error
+   if (!j || j->err || j->parse || j->null)
+      return -1;
+   if (j->quote || !c || c > ' ')
+      jo_write (j, c);          // skips unused whitespace
+   if (j->err)
+      return -1;
+   return j->level + j->quote;
 }
 
 jo_t
@@ -329,6 +377,8 @@ jo_rewind (jo_t j)
    j->comma = 0;
    j->level = 0;
    j->tagok = 0;
+   j->quote = 0;
+   j->backslash = 0;
    if (!j->null)
       return NULL;
    return j->buf;
@@ -447,7 +497,7 @@ jo_write_char (jo_t j, uint32_t c)
 #undef esc
       if (c == '/' && j->lt)
       jo_write (j, '\\');       // escape / is optional, but we always do after < to avoid </script>
-   if (c < ' ' || c >= 0xFF)
+   else if (c < ' ' || c >= 0xFF)
    {
       jo_write (j, '\\');
       jo_write (j, 'u');
@@ -595,8 +645,6 @@ jo_array (jo_t j, const char *tag)
       j->err = "JSON too deep";
       return;
    }
-   j->o[j->level / 8] &= ~(1 << (j->level & 7));
-   j->level++;
    j->comma = 0;
    jo_write (j, '[');
 }
@@ -612,8 +660,6 @@ jo_object (jo_t j, const char *tag)
          j->err = "JSON too deep";
       return;
    }
-   j->o[j->level / 8] |= (1 << (j->level & 7));
-   j->level++;
    j->comma = 0;
    jo_write (j, '{');
 }
@@ -621,15 +667,8 @@ jo_object (jo_t j, const char *tag)
 void
 jo_close (jo_t j)
 {                               // Close current array or object
-   if (!j->level)
-   {
-      if (!j->err)
-         j->err = "JSON too many closes";
-      return;
-   }
-   j->level--;
    j->comma = 1;
-   jo_write (j, (j->o[j->level / 8] & (1 << (j->level & 7))) ? '}' : ']');
+   jo_write (j, (j->o[(j->level - 1) / 8] & (1 << ((j->level - 1) & 7))) ? '}' : ']');
 }
 
 void
@@ -830,9 +869,11 @@ jo_ws (jo_t j)
    return c;
 }
 
-int jo_pos(jo_t j)
+int
+jo_pos (jo_t j)
 {
-   if (!j || j->err) return -1;
+   if (!j || j->err)
+      return -1;
    return j->ptr;
 }
 

@@ -51,7 +51,7 @@ jo_t jo_object_alloc (void);
 jo_t jo_pad (jo_t *, int);
 
 // Copy object - copies the object, and if allocating memory (or dup), makes copy of the allocated memory too
-jo_t jo_copy_dup (jo_t,char dup);
+jo_t jo_copy_dup (jo_t, char dup);
 #define	jo_copy(j) jo_copy_dup(j,0)
 #define	jo_dup(j) jo_copy_dup(j,1)
 
@@ -85,6 +85,9 @@ int jo_len (jo_t);
 
 // Creating
 // Note that tag is required if in an object and must be null if not
+
+// Build a character at a time with minimal syntax check, return level (+1 in quotes) or negative for error
+int jo_char (jo_t, const char c);
 
 // Start an array
 void jo_array (jo_t, const char *tag);
@@ -142,7 +145,7 @@ void jo_null (jo_t, const char *tag);
 jo_type_t jo_here (jo_t);
 
 // Position in original JSON
-int jo_pos(jo_t);
+int jo_pos (jo_t);
 
 // Move to next element we can parse (validating what we move over as we go)
 jo_type_t jo_next (jo_t);
