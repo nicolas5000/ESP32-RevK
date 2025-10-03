@@ -4676,18 +4676,20 @@ revk_upgrade_check (const char *val)
         databuild[20];
       revk_build_date_app (app, appbuild);
       revk_build_date_app (&data, databuild);
-      jo_stringf (j, "version", "%.32s", data.version);
       jo_stringf (j, "project", "%.32s", data.project_name);
+      jo_stringf (j, "version", "%.32s", data.version);
       jo_string (j, "build", databuild);
+      if (strncmp (app->project_name, data.project_name, sizeof (data.project_name)))
+      {
+         ret = 2;               // Different project name
+         jo_string (j, "was-project", app->project_name);
+      }
       if (strncmp (app->version, data.version, sizeof (data.version)))
       {
          ret = 1;               // Different version
          jo_string (j, "was-version", app->version);
-      } else if (strncmp (app->project_name, data.project_name, sizeof (data.project_name)))
-      {
-         ret = 2;               // Different project name
-         jo_string (j, "was-project", app->project_name);
-      } else if (strcmp (appbuild, databuild))
+      }
+      if (strcmp (appbuild, databuild))
       {
          ret = 4;               // Different date
          jo_string (j, "was-build", appbuild);
