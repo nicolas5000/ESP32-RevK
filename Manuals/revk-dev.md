@@ -216,6 +216,7 @@ You build up the JSON with functions... These functions take a *tag* which is ne
 |`jo_litf`|Add a literal using printf formatting, usually for adding a number of some sort.|
 |`jo_datetime`|Add a `time_t` as ISO datetime string|
 |`jo_base64`|Add a base 64 coded value, also `jo_base32` and `jo_base16`|
+|`jo_char`|Allows making JSON a character at a time with limited parsing, returns level(+1 for string) or -ve for error|
 
 You do not need to close everything, when you finish the construction all necessary closes are applied for you.
 
@@ -226,3 +227,19 @@ The status LED can be set by `revk_blink (uint8_t on, uint8_t off, const char *c
 Note that if `led_strip` is included in managed components then the library can work a WS2812B LED instead of discrete RGB LEDs. This will normally create a single LED *strip*. However `revk_strip` can be initialised before starting the library to allow more LEDs, and the library will set the first LED for status and update all LEDs 10 times a second. This allows the application to set other LEDs with `led_strip_set_pixel (revk_strip, i, r, g, b)` and rely on it being refreshed automatically by the library. Where the `revk_strip` is preset, this process applies ever if a fixed LED or fixed RGB LED is also defined in `blink`.
 
 See [Default LEDs](LED.md) for standard/default LED sequences.
+
+### ATE
+
+If `CONFIG_REVK_ATE` is set, ATE working includes some additional console output for ATE working (intended for work with [Flasher](https://flasher.revk.uk/). It also allows settings to be set via the console.
+
+|Output|Meaning|
+|------|-------|
+|`ID:`|Initial ID, *appname* and *build suffix*, *space*, *version*, *space*, *build date*|
+|`ATE: PASS`|App called `revk_ate_pass()`|
+|`ATE: FAIL`|App called `revk_ate_fail()`|
+|`ERR:`|Error in settings|
+|`OK:`|Settings accepted and stored|
+
+Settings can be sent by sending a JSON object to the console, usually after waiting for `ID:`. This works only within first 10 seconds. Response is a reboot if changed settings stored, `OK:` if settings stored OK, `ERR:` for error in settings.
+
+Note: If using USB you will need `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` set to receive characters on console to allow settings to be changed. If using serial you need `CONFIG_ESP_CONSOLE_UART_DEFAULT` set.

@@ -1985,15 +1985,25 @@ task (void *pvParameters)
    }
    revk_gpio_input (factorygpio);
    b.factorywas = revk_gpio_get (factorygpio);
+   const esp_app_desc_t *app = esp_app_get_description ();
+#ifdef	CONFIG_REVK_ATE
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+#ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#warning	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
+#endif
+#endif
+   {
+      char temp[20];
+      if (revk_build_date (temp))
+         printf ("\nID: %s%s %s %s\n", app->project_name, revk_build_suffix, app->version, temp);
+   }
+   jo_t ate = NULL;
+#endif
    while (1)
    {                            /* Idle */
       if (!b.wdt_test && watchdogtime)
          esp_task_wdt_reset ();
-      {
-	      int c=getchar();
-	      if(c>0)ESP_LOGE(TAG,"c=%d",c);
-      }
-      {                         // Fast (once per 100ms)
+      {                         // Fast
          int64_t now = esp_timer_get_time ();
          if (now < tick)
          {                      /* wait for next 10th, so idle task runs */
@@ -2046,6 +2056,36 @@ task (void *pvParameters)
       if (now != last)
       {                         // Slow (once a second)
          last = now;
+#ifdef	CONFIG_REVK_ATE
+         if (now < 10)
+         {
+            int c;
+            while ((c = getchar ()) > 0)
+            {
+               ESP_LOGE (TAG, "CHAR: %d\n", c);
+               if (!ate && c == '{')
+                  ate = jo_create_alloc ();
+               if (ate && jo_char (ate, c) <= 0)
+               {                // End of object
+                  jo_rewind (ate);
+                  jo_skip (ate);        // Check whole JSON
+                  const char *err = jo_error (ate, NULL);
+                  if (!err)
+                     err = revk_settings_store (ate, NULL, 0);
+                  jo_free (&ate);
+                  if (err && *err)
+                     printf ("ERR: %s\n", err);
+                  else if (err)
+                  {             // Changed
+                     revk_settings_commit ();
+                     esp_restart ();
+                  }             // No change - good
+                  printf ("OK:\n");
+               }
+            }                   // TODO else if(ate&&now>10)jo_free(&ate);
+         } else if (ate)
+            jo_free (&ate);
+#endif
          if (b.gotipv6)
          {                      // Stuff that may be useful when we get an IPv6 address
             b.gotipv6 = 0;
@@ -2282,6 +2322,7 @@ task (void *pvParameters)
             break;
       }
    }
+
    revk_pre_shutdown ();
    esp_restart ();
 }
@@ -2414,14 +2455,6 @@ revk_boot (app_callback_t * app_callback_cb)
    ESP_LOGE (TAG, "Power on GPIO %d", CONFIG_REVK_GPIO_POWER);
 #endif
    const esp_app_desc_t *app = esp_app_get_description ();
-#ifdef	CONFIG_REVK_ATE
-#ifdef  CONFIG_IDF_TARGET_ESP32S3
-#ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
-#warning	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
-#endif
-#endif
-   printf ("\nID: %s%s %s %s %s\n", app->project_name, revk_build_suffix, app->version, app->date, app->time);
-#endif
 #ifdef	CONFIG_REVK_GPIO_INIT
    {                            // Safe GPIO
       gpio_config_t i = {.mode = GPIO_MODE_INPUT };
