@@ -1988,17 +1988,6 @@ task (void *pvParameters)
    revk_gpio_input (factorygpio);
    b.factorywas = revk_gpio_get (factorygpio);
 #ifdef	CONFIG_REVK_ATE
-#ifdef  CONFIG_IDF_TARGET_ESP32S3
-#ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
-#warning	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
-#endif
-#endif
-   {
-      const esp_app_desc_t *app = esp_app_get_description ();
-      char temp[20];
-      if (revk_build_date_app (app, temp))
-         printf ("\nID: %s%s %s %s\n", app->project_name, revk_build_suffix, app->version, temp);
-   }
    jo_t ate = NULL;
 #endif
    while (1)
@@ -2457,6 +2446,18 @@ revk_boot (app_callback_t * app_callback_cb)
    ESP_LOGE (TAG, "Power on GPIO %d", CONFIG_REVK_GPIO_POWER);
 #endif
    const esp_app_desc_t *app = esp_app_get_description ();
+#ifdef	CONFIG_REVK_ATE
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+#ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#warning	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
+#endif
+#endif
+   {
+      char temp[20];
+      if (revk_build_date_app (app, temp))
+         printf ("\nID: %s%s %s %s\n", app->project_name, revk_build_suffix, app->version, temp);
+   }
+#endif
 #ifdef	CONFIG_REVK_GPIO_INIT
    {                            // Safe GPIO
       gpio_config_t i = {.mode = GPIO_MODE_INPUT };
