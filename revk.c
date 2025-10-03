@@ -5025,12 +5025,9 @@ jo_make (const char *node)
 }
 
 const char *
-revk_build_date (char d[20])
+revk_build_date_app (esp_app_desc_t * app, char d[20])
 {
-   if (!d)
-      return NULL;
-   const esp_app_desc_t *app = esp_app_get_description ();
-   if (!app)
+   if (!d || !app)
       return NULL;
    const char *v = app->date;
    if (!v || strlen (v) != 11)
