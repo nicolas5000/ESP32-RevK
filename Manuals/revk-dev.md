@@ -234,7 +234,7 @@ If `CONFIG_REVK_ATE` is set, ATE working includes some additional console output
 
 |Output|Meaning|
 |------|-------|
-|`ID:`|Initial ID, *appname* and *build suffix*, *space*, *version*, *space*, *build date*|
+|`ID:`|Initial ID, *appname* and *build suffix*, *space*, *version*, *space*, *ISO build date*|
 |`ATE: PASS`|App called `revk_ate_pass()`|
 |`ATE: FAIL`|App called `revk_ate_fail()`|
 |`ERR:`|Error in settings|
