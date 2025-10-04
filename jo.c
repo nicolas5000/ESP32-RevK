@@ -774,8 +774,6 @@ jo_strncpyd (jo_t j, void *dstv, size_t dlen, uint8_t bits, const char *alphabet
    uint8_t *dst = dstv;
    if (!j || j->err || !j->parse)
       return -1;
-   if (jo_peek (j) != '"')
-      return -1;                // Not a string
    jo_t p = jo_link (j);
    jo_read (p);                 // skip "
    int b = 0,
