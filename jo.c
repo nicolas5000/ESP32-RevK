@@ -112,11 +112,12 @@ jo_store (jo_t j, uint8_t c)
             j->o[j->level / 8] &= ~(1 << (j->level & 7));
          j->level++;
       }
-   }
-   else if (c == '}' || c == ']')
+   } else if (c == '}' || c == ']')
    {
-	   if(!j->level)j->err="To many closes";
-	   else j->level--;
+      if (!j->level)
+         j->err = "To many closes";
+      else
+         j->level--;
    }
 }
 
@@ -1155,6 +1156,27 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
       jo_read (p);
       while ((c = jo_read_str (p)) >= 0 && (!cmp || !result))
          process (c);
+   } else if (c == '[' || c == '{')
+   {                            // Object or array
+      int l = 0;
+      uint8_t s = 0;
+      uint8_t b = 0;
+      while ((c = jo_read (p)) >= 0 && (!cmp || !result))
+      {
+         if (!s && c == '"')
+            s = 1;
+         else if (b)
+            b = 0;
+         else if (s && c == '\\')
+            b = 1;
+         else if (s && c == '"')
+            s = 0;
+         else if (!s && (c == '[' || c == '{'))
+            l++;
+         process (c);
+         if (!s && (c == ']' || c == '}') && !--l)
+            break;
+      }
    } else
    {                            // Literal or number
       while ((c = jo_read (p)) >= 0 && c > ' ' && c != ',' && c != '[' && c != '{' && c != ']' && c != '}' && (!cmp || !result))

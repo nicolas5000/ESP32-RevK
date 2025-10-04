@@ -188,6 +188,8 @@ Once on the value, e.g. after a `JO_TAG` or within an array, you can get the val
 
 However strings are more complex as the raw JSON has escaping. `jo_strlen` gives the length of a `JO_STRING` value after de-escaping. `jo_strncpy` can be used to copy and de-escape. `jo_strncmp` can be used to compare to a normal string. `jo_strdup` can be used to copy and de-escape in to malloc'd memory. These string functions can be used at a `JO_STRING` or `JO_TAG` point. There are also `jo_strncpy64` (and `32` and `16`) for decoding base64 string and copying.
 
+Note the `jo_strdup`/`jo_strlen`/`jo_strcmp`/`jo_strcpy`, etc normally work on a JSON string, de-escaping to create valid UTF-8. However, they can also be used on a literal or an object or array where the string is the raw JSON comprising the value.
+
 There are additional functions such as `jo_level` to tell you what level of nesting you are at, `jo_rewind` to start parsing again.
 
 The function `jo_copy` can copy a whole JSON object if needed.
