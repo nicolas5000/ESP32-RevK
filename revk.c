@@ -1994,7 +1994,7 @@ task (void *pvParameters)
    }
    revk_gpio_input (factorygpio);
    b.factorywas = revk_gpio_get (factorygpio);
-#ifdef	CONFIG_REVK_ATE
+#ifdef	CONFIG_REVK_ATE_SETTINGS
    jo_t ate = NULL;
 #endif
    while (1)
