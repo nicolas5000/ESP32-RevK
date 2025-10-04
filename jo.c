@@ -774,6 +774,8 @@ jo_strncpyd (jo_t j, void *dstv, size_t dlen, uint8_t bits, const char *alphabet
    uint8_t *dst = dstv;
    if (!j || j->err || !j->parse)
       return -1;
+   if (jo_peek (j) != '"')
+      return -1;                // Not a string
    jo_t p = jo_link (j);
    jo_read (p);                 // skip "
    int b = 0,
@@ -1084,10 +1086,16 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
    jo_t p = jo_link (j);
    int c = jo_peek (p);
    ssize_t result = 0;
+   void add (uint8_t v)
+   {                            // Store byte
+      if (str && str < end - 1)
+         *str++ = v;            // store, but allow for final null always
+      result++;                 // count
+   }
    void process (int c)
    {                            // Compare or copy or count, etc
       if (cmp)
-      {                         // Comparing
+      {                         // Compare
          if (!str)
             return;             // Uh
          if (str >= end)
@@ -1124,12 +1132,6 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
          }
       } else
       {                         // Copy or count
-         void add (uint8_t v)
-         {
-            if (str && str < end - 1)
-               *str++ = v;      // store, but allow for final null always
-            result++;           // count
-         }
          if (c >= 0x10000)
          {
             add (0xF0 + (c >> 18));
@@ -1171,7 +1173,29 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
             s = 0;
          else if (!s && (c == '[' || c == '{'))
             l++;
-         process (c);
+         // We don't use process() as we are working on raw JSON bytes here
+         if (cmp)
+         {
+            if (!str)
+               return;          // Uh
+            if (str >= end)
+            {
+               result = 1;      // str ended, so str<j
+               return;
+            }
+            int c2 = *str++;
+            if (c < c2)
+            {
+               result = -1;     // str>j
+               return;
+            }
+            if (c > c2)
+            {
+               result = 1;      // str<j
+               return;
+            }
+         } else
+            add (c);
          if (!s && (c == ']' || c == '}') && !--l)
             break;
       }
