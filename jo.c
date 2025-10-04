@@ -1177,22 +1177,22 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
          if (cmp)
          {
             if (!str)
-               return;          // Uh
+               continue;        // Uh
             if (str >= end)
             {
                result = 1;      // str ended, so str<j
-               return;
+               continue;
             }
             int c2 = *str++;
             if (c < c2)
             {
                result = -1;     // str>j
-               return;
+               continue;
             }
             if (c > c2)
             {
                result = 1;      // str<j
-               return;
+               continue;
             }
          } else
             add (c);
