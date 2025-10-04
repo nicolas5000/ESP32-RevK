@@ -20,6 +20,13 @@ static const char __attribute__((unused)) * TAG = "RevK";
 #ifdef	CONFIG_REVK_MATTER
 #undef	CONFIG_MDNS_MAX_INTERFACES
 #endif
+#ifdef	CONFIG_REVK_ATE_SETTINGS
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+#ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#warning	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
+#endif
+#endif
+#endif
 
 #ifndef CONFIG_IDF_TARGET_ESP8266
 #include "esp_mac.h"
@@ -2047,13 +2054,12 @@ task (void *pvParameters)
       if (now != last)
       {                         // Slow (once a second)
          last = now;
-#ifdef	CONFIG_REVK_ATE
+#ifdef	CONFIG_REVK_ATE_SETTINGS
          if (now < 10)
          {
             int c;
             while ((c = getchar ()) > 0)
             {
-               ESP_LOGE (TAG, "CHAR: %d\n", c);
                if (!ate && c == '{')
                   ate = jo_create_alloc ();
                if (ate && jo_char (ate, c) <= 0)
@@ -2073,7 +2079,7 @@ task (void *pvParameters)
                   }             // No change - good
                   printf ("OK:\n");
                }
-            }                   // TODO else if(ate&&now>10)jo_free(&ate);
+            }
          } else if (ate)
             jo_free (&ate);
 #endif
@@ -2447,11 +2453,6 @@ revk_boot (app_callback_t * app_callback_cb)
 #endif
    const esp_app_desc_t *app = esp_app_get_description ();
 #ifdef	CONFIG_REVK_ATE
-#ifdef  CONFIG_IDF_TARGET_ESP32S3
-#ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
-#warning	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
-#endif
-#endif
    {
       char temp[20];
       if (revk_build_date_app (app, temp))

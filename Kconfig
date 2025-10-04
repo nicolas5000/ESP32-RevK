@@ -12,6 +12,13 @@ menu "RevK"
         help
 		Messages for use of ATE / Flasher
 
+	config REVK_ATE_SETTINGS
+        bool "ATE / Flasher settings enable"
+        default y
+	depends on REVK_ATE
+        help
+		Accept settings after boot via console
+
 	config REVK_PREFIXAPP
         bool "MQTT uses appname as a prefix"
         default y
