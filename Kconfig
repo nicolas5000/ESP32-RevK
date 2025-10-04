@@ -14,7 +14,7 @@ menu "RevK"
 
 	config REVK_ATE_SETTINGS
         bool "ATE / Flasher settings enable"
-        default y
+        default n
 	depends on REVK_ATE
         help
 		Accept settings after boot via console
