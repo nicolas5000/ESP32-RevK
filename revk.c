@@ -1460,7 +1460,7 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                {
                   jo_t j = jo_object_alloc ();
                   jo_stringf (j, "ip", IPSTR, IP2STR (&event->ip_info.ip));
-                  jo_console (&j);
+                  revk_console (&j);
                }
 #else
                ESP_LOGE (TAG, "Got IPv4 " IPSTR " from %s", IP2STR (&event->ip_info.ip), (char *) ap.ssid);
@@ -1489,7 +1489,7 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                   jo_rewind (j);
                   app_callback (0, topiccommand, NULL, "wifi", j);
 #ifdef	CONFIG_REVK_ATE
-		  jo_console(&j);
+		  revk_console(&j);
 #else
                   jo_free (&j);
 #endif
@@ -1527,7 +1527,7 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                   jo_int (j, "zone", event->ip6_info.ip.zone);
                   app_callback (0, topiccommand, NULL, "ipv6", j);
 #ifdef	CONFIG_REVK_ATE
-		  jo_console(&j);
+		  revk_console(&j);
 #else
                   jo_free (&j);
 #endif
@@ -2092,7 +2092,7 @@ task (void *pvParameters)
                   }             // No change - good
                   else
                      jo_bool (ate, "ok", 1);
-                  jo_console (&j);
+                  revk_console (&j);
                }
             }
          } else if (ate)
@@ -2449,7 +2449,7 @@ revk_ate_pass (void)
       b.atedone = 1;
       jo_t j = jo_object_alloc ();
       jo_bool (j, "ate", 1);
-      jo_console (&j);
+      revk_console (&j);
    }
 #endif
 }
@@ -2465,7 +2465,7 @@ revk_ate_fail (const char *reason)
       jo_bool (j, "ate", 0);
       if (reason)
          jo_string (j, "reason", reason);
-      jo_console (&j);
+      revk_console (&j);
    }
 #endif
 }
@@ -2489,7 +2489,7 @@ revk_boot (app_callback_t * app_callback_cb)
       jo_string (j, "version", app->version);
       if (revk_build_date_app (app, temp))
          jo_string (j, "build", temp);
-      jo_console (&j);
+      revk_console (&j);
    }
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT
