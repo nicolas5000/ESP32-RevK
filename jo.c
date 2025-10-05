@@ -1086,6 +1086,7 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
    jo_t p = jo_link (j);
    int c = jo_peek (p);
    ssize_t result = 0;
+   ssize_t limit = (cmp == 2 ? max : -1);       // Limit JSON side as well
    void add (uint8_t v)
    {                            // Store byte
       if (str && str < end - 1)
@@ -1100,7 +1101,7 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
             return;             // Uh
          if (str >= end)
          {
-            result = cmp;       // str ended, so str<j or limited compare
+            result = 1;         // over end
             return;
          }
          int c2 = *str++,
@@ -1154,14 +1155,15 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
    if (c == '"')
    {                            // String
       jo_read (p);
-      while ((c = jo_read_str (p)) >= 0 && (!cmp || !result))
+      // Note limit is unicode characters not bytes in JSON...
+      while (limit-- && (c = jo_read_str (p)) >= 0 && (!cmp || !result))
          process (c);
    } else if (c == '[' || c == '{')
    {                            // Object or array
       int l = 0;
       uint8_t s = 0;
       uint8_t b = 0;
-      while ((c = jo_read (p)) >= 0 && (!cmp || !result))
+      while (limit-- (c = jo_read (p)) >= 0 && (!cmp || !result))
       {
          if (!s && c == '"')
             s = 1;
@@ -1180,7 +1182,7 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
                continue;        // Uh
             if (str >= end)
             {
-               result = cmp;    // str ended, so str<j or limited compare
+               result = 1;      // Over end
                continue;
             }
             int c2 = *str++;
@@ -1201,14 +1203,13 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
       }
    } else
    {                            // Literal or number
-      while ((c = jo_read (p)) >= 0 && c > ' ' && c != ',' && c != '[' && c != '{' && c != ']' && c != '}' && (!cmp || !result))
+      while (limt-- && (c = jo_read (p)) >= 0 && c > ' ' && c != ',' && c != '[' && c != '{' && c != ']' && c != '}'
+             && (!cmp || !result))
          process (c);
    }
-   if (result == 2)
-      result = 0;               // Limited cmp
    if (!cmp && str && str < end)
       *str = 0;                 // Final null...
-   if (!result && cmp == 1 && str && str < end)
+   if (cmp && !result && str && str < end)
       result = -1;              // j ended, do str>j
    jo_free (&p);
    return result;
