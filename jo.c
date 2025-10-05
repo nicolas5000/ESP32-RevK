@@ -1163,7 +1163,7 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
       int l = 0;
       uint8_t s = 0;
       uint8_t b = 0;
-      while (limit-- (c = jo_read (p)) >= 0 && (!cmp || !result))
+      while (limit-- && (c = jo_read (p)) >= 0 && (!cmp || !result))
       {
          if (!s && c == '"')
             s = 1;
