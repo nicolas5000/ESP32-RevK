@@ -242,6 +242,8 @@ If `CONFIG_REVK_ATE` is set, ATE working includes some additional console output
 |`ERR:`|Error in settings|
 |`OK:`|Settings accepted and stored|
 
+Only the first of `revk_ate_pass()` or `revk_ate_fail()` is actioned, so you can safely call `revk_ate_pass()` at the end of testing/initialisation where one or more `revk_ate_fail()` calls have been made.
+
 Settings can be sent by sending a JSON object to the console (`CONFIG_REVK_ATE_SETTINGS`), usually after waiting for `ID:`. This works only within first 10 seconds. Response is a reboot if changed settings stored, `OK:` if settings stored OK, `ERR:` for error in settings.
 
 Note: If using USB you will need `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` set to receive characters on console to allow settings to be changed. If using serial you need `CONFIG_ESP_CONSOLE_UART_DEFAULT` set.
