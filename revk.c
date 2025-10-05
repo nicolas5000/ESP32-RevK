@@ -2467,7 +2467,7 @@ revk_boot (app_callback_t * app_callback_cb)
    {
       char temp[20];
       if (revk_build_date_app (app, temp))
-         printf ("\nID: %s%s %s %s\n", app->project_name, revk_build_suffix, app->version, temp);
+         printf ("\nSTART: %s%s %s %s\n", app->project_name, revk_build_suffix, app->version, temp);
    }
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT
