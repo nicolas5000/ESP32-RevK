@@ -2073,14 +2073,17 @@ task (void *pvParameters)
                   if (!err)
                      err = revk_settings_store (ate, NULL, 0);
                   jo_free (&ate);
+                  ate = jo_object_alloc ();
                   if (err && *err)
-                     printf ("ERR: %s\n", err);
+                     jo_string (ate, "error", err);
                   else if (err)
                   {             // Changed
                      revk_settings_commit ();
                      esp_restart ();
                   }             // No change - good
-                  printf ("OK:\n");
+                  else
+                     jo_bool (ate, "ok", 1);
+                  printf ("%s\n", jo_finisha (&ate));
                }
             }
          } else if (ate)
