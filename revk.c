@@ -1456,13 +1456,7 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                wifi_ap_record_t ap = { };
                REVK_ERR_CHECK (esp_wifi_sta_get_ap_info (&ap));
                // Done as Error level as really useful if logging at all
-#ifdef	CONFIG_REVK_ATE
-               {
-                  jo_t j = jo_object_alloc ();
-                  jo_stringf (j, "ip", IPSTR, IP2STR (&event->ip_info.ip));
-                  revk_console (&j);
-               }
-#else
+#ifndef	CONFIG_REVK_ATE
                ESP_LOGE (TAG, "Got IPv4 " IPSTR " from %s", IP2STR (&event->ip_info.ip), (char *) ap.ssid);
 #endif
                if (sta_netif)
@@ -1480,20 +1474,18 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
 #endif
 #ifdef  CONFIG_REVK_WIFI
                xEventGroupSetBits (revk_group, GROUP_WIFI);
+               jo_t j = jo_object_alloc ();
+               jo_string (j, "ssid", (char *) ap.ssid);
+               jo_stringf (j, "ip", IPSTR, IP2STR (&event->ip_info.ip));
+               jo_stringf (j, "gw", IPSTR, IP2STR (&event->ip_info.gw));
+               jo_rewind (j);
                if (app_callback)
-               {
-                  jo_t j = jo_object_alloc ();
-                  jo_string (j, "ssid", (char *) ap.ssid);
-                  jo_stringf (j, "ip", IPSTR, IP2STR (&event->ip_info.ip));
-                  jo_stringf (j, "gw", IPSTR, IP2STR (&event->ip_info.gw));
-                  jo_rewind (j);
                   app_callback (0, topiccommand, NULL, "wifi", j);
 #ifdef	CONFIG_REVK_ATE
-		  revk_console(&j);
+               revk_console (&j);
 #else
-                  jo_free (&j);
+               jo_free (&j);
 #endif
-               }
 #endif
 #ifdef	CONFIG_REVK_APMODE
                apstoptime = uptime () + 60;     // Stop ap mode soon
@@ -1516,22 +1508,22 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                // Done as Error level as really useful if logging at all
                char ip[40];
                inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, sizeof (ip));
+#ifndef	CONFIG_REVK_ATE
                ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, ip, event->ip6_info.ip.zone);
+#endif
                if (!event->ip6_info.ip.zone)
                   b.gotipv6 = 1;
 #ifdef  CONFIG_REVK_WIFI
+               jo_t j = jo_object_alloc ();
+               jo_string (j, "ipv6", ip);
+               jo_int (j, "zone", event->ip6_info.ip.zone);
                if (app_callback)
-               {
-                  jo_t j = jo_object_alloc ();
-                  jo_string (j, "ipv6", ip);
-                  jo_int (j, "zone", event->ip6_info.ip.zone);
                   app_callback (0, topiccommand, NULL, "ipv6", j);
 #ifdef	CONFIG_REVK_ATE
-		  revk_console(&j);
+               revk_console (&j);
 #else
-                  jo_free (&j);
+               jo_free (&j);
 #endif
-               }
 #endif
                gotip |= (1 << ip_index);
             }
