@@ -232,18 +232,13 @@ See [Default LEDs](LED.md) for standard/default LED sequences.
 
 ### ATE
 
-If `CONFIG_REVK_ATE` is set, ATE working includes some additional console output for ATE working (intended for work with [Flasher](https://flasher.revk.uk/). It also allows settings to be set via the console.
+If `CONFIG_REVK_ATE` is set, ATE working includes some additional console output for ATE working (intended for work with [Flasher](https://flasher.revk.uk/). It also allows settings to be set via the console. The messages are in JSON format with a new line.
 
-|Output|Meaning|
-|------|-------|
-|`START:`|Startup, with *appname* and *build suffix*, *space*, *version*, *space*, *ISO build date*|
-|`PASS`|App called `revk_ate_pass()`|
-|`FAIL`|App called `revk_ate_fail(why), may include reason`|
-|`ERR:`|Error in settings|
-|`{"ok":true}`|Settings accepted and stored|
+- `"app"` with *appname* and *build suffix*, `"version"` with version, and `"build"` with ISO build date.
+- `"ate"` with `true` (pass) or `false` (fail). A fail may have `"reason"`
 
 Only the first of `revk_ate_pass()` or `revk_ate_fail()` is actioned, so you can safely call `revk_ate_pass()` at the end of testing/initialisation where one or more `revk_ate_fail()` calls have been made.
 
-Settings can be sent by sending a JSON object to the console (`CONFIG_REVK_ATE_SETTINGS`), usually after waiting for `ID:`. This works only within first 10 seconds. Response is a reboot if changed settings stored, with JSON containing `"ok":true` if settings stored OK, or containing a string `"error"` for error in settings.
+Settings can be sent by sending a JSON object to the console (`CONFIG_REVK_ATE_SETTINGS`), usually after waiting for JSON with `"app"`. This works only within first 10 seconds. Response is a reboot if changed settings stored, with JSON containing `"ok":true` if settings stored OK, or containing `"ok":false` and optionally `"error"`.
 
 Note: If using USB you will need `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` set to receive characters on console to allow settings to be changed. If using serial you need `CONFIG_ESP_CONSOLE_UART_DEFAULT` set.

@@ -2075,8 +2075,10 @@ task (void *pvParameters)
                   jo_free (&ate);
                   ate = jo_object_alloc ();
                   if (err && *err)
+                  {
+                     jo_bool (ate, "ok", 0);
                      jo_string (ate, "error", err);
-                  else if (err)
+                  } else if (err)
                   {             // Changed
                      revk_settings_commit ();
                      esp_restart ();
@@ -2438,19 +2440,25 @@ revk_ate_pass (void)
    if (!b.atedone)
    {
       b.atedone = 1;
-      printf ("PASS:\n");
+      jo_t j = jo_object_alloc ();
+      jo_bool (j, "ate", 1);
+      printf ("%s\n", jo_finisha (&j));
    }
 #endif
 }
 
 void
-revk_ate_fail (const char *why)
+revk_ate_fail (const char *reason)
 {
 #ifdef	CONFIG_REVK_ATE
    if (!b.atedone)
    {
       b.atedone = 1;
-      printf ("FAIL: %s\n", why ? : "");
+      jo_t j = jo_object_alloc ();
+      jo_bool (j, "ate", 0);
+      if (reason)
+         jo_string (j, "reason", reason);
+      printf ("%s\n", jo_finisha (&j));
    }
 #endif
 }
@@ -2469,8 +2477,12 @@ revk_boot (app_callback_t * app_callback_cb)
 #ifdef	CONFIG_REVK_ATE
    {
       char temp[20];
+      jo_t j = jo_object_alloc ();
+      jo_stringf (j, "app", "%s%s", app->project_name, revk_build_suffix);
+      jo_string (j, "version", app->version);
       if (revk_build_date_app (app, temp))
-         printf ("\nSTART: %s%s %s %s\n", app->project_name, revk_build_suffix, app->version, temp);
+         jo_string (j, "build", temp);
+      printf ("\n%s\n", jo_finisha (&j));
    }
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT
