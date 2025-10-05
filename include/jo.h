@@ -164,7 +164,6 @@ ssize_t jo_strncpy (jo_t, void *, size_t max);
 
 // Compare from current point to a string. If a string or a tag, remove quotes and decode/deescape
 ssize_t jo_strncmp (jo_t, void *, size_t max);
-#define jo_strcmp(j,s) jo_strncmp(j,s,strlen(s))
 
 char *jo_strdup (jo_t);
 // Allocate a copy of string

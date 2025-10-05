@@ -1072,7 +1072,7 @@ jo_next (jo_t j)
 
 static ssize_t
 jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
-{                               // Copy or compare (-1 for j<str, +1 for j>str)
+{                               // Copy or compare (-1 for j<str, +1 for j>str) - cmp==2 to limited to max compare
    char *str = strv;
    char *end = str + max;
    if (!j || !j->parse || j->err)
@@ -1100,7 +1100,7 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
             return;             // Uh
          if (str >= end)
          {
-            result = 1;         // str ended, so str<j
+            result = cmp;       // str ended, so str<j or limited compare
             return;
          }
          int c2 = *str++,
@@ -1180,7 +1180,7 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
                continue;        // Uh
             if (str >= end)
             {
-               result = 1;      // str ended, so str<j
+               result = cmp;    // str ended, so str<j or limited compare
                continue;
             }
             int c2 = *str++;
@@ -1204,9 +1204,11 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
       while ((c = jo_read (p)) >= 0 && c > ' ' && c != ',' && c != '[' && c != '{' && c != ']' && c != '}' && (!cmp || !result))
          process (c);
    }
+   if (result == 2)
+      result = 0;               // Limited cmp
    if (!cmp && str && str < end)
       *str = 0;                 // Final null...
-   if (!result && cmp && str && str < end)
+   if (!result && cmp == 1 && str && str < end)
       result = -1;              // j ended, do str>j
    jo_free (&p);
    return result;
@@ -1227,7 +1229,13 @@ jo_strncpy (jo_t j, void *target, size_t max)
 ssize_t
 jo_strncmp (jo_t j, void *source, size_t max)
 {                               // Compare from current point to a string. If a string or a tag, remove quotes and decode/deescape
-   return jo_cpycmp (j, source, max, 1);
+   return jo_cpycmp (j, source, max, 2);
+}
+
+ssize_t
+jo_strcmp (jo_t j, void *source)
+{                               // Compare from current point to a string. If a string or a tag, remove quotes and decode/deescape
+   return jo_cpycmp (j, source, strlen (source), 1);
 }
 
 jo_type_t

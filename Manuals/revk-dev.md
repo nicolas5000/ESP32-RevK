@@ -236,7 +236,8 @@ If `CONFIG_REVK_ATE` is set, ATE working includes some additional console output
 
 - `"app"` with *appname* and *build suffix*, `"version"` with version, and `"build"` with ISO build date.
 - `"ate"` with `true` (pass) or `false` (fail). A fail may have `"reason"`
-- `"ip"` with IP address
+- `"wifi"` with ssid and IPv4 address
+- `"ipv6"` with IPv6
 
 Only the first of `revk_ate_pass()` or `revk_ate_fail()` is actioned, so you can safely call `revk_ate_pass()` at the end of testing/initialisation where one or more `revk_ate_fail()` calls have been made.
 

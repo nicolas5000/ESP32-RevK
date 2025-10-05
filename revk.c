@@ -1460,7 +1460,7 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                {
                   jo_t j = jo_object_alloc ();
                   jo_stringf (j, "ip", IPSTR, IP2STR (&event->ip_info.ip));
-                  printf ("%s\n", jo_finisha (&j));
+                  jo_console (&j);
                }
 #else
                ESP_LOGE (TAG, "Got IPv4 " IPSTR " from %s", IP2STR (&event->ip_info.ip), (char *) ap.ssid);
@@ -1484,12 +1484,15 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                {
                   jo_t j = jo_object_alloc ();
                   jo_string (j, "ssid", (char *) ap.ssid);
-                  //if (ap.phy_lr) jo_bool (j, "lr", 1); // This just says it can do LR, not that we are using LR
                   jo_stringf (j, "ip", IPSTR, IP2STR (&event->ip_info.ip));
                   jo_stringf (j, "gw", IPSTR, IP2STR (&event->ip_info.gw));
                   jo_rewind (j);
                   app_callback (0, topiccommand, NULL, "wifi", j);
+#ifdef	CONFIG_REVK_ATE
+		  jo_console(&j);
+#else
                   jo_free (&j);
+#endif
                }
 #endif
 #ifdef	CONFIG_REVK_APMODE
@@ -1513,15 +1516,7 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                // Done as Error level as really useful if logging at all
                char ip[40];
                inet_ntop (AF_INET6, (void *) &event->ip6_info.ip, ip, sizeof (ip));
-#ifdef	CONFIG_REVK_ATE
-               {
-                  jo_t j = jo_object_alloc ();
-                  jo_string (j, "ip", ip);
-                  printf ("%s\n", jo_finisha (&j));
-               }
-#else
                ESP_LOGE (TAG, "Got IPv6 [%d] %s (%d)", ip_index, ip, event->ip6_info.ip.zone);
-#endif
                if (!event->ip6_info.ip.zone)
                   b.gotipv6 = 1;
 #ifdef  CONFIG_REVK_WIFI
@@ -1531,7 +1526,11 @@ ip_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void
                   jo_string (j, "ipv6", ip);
                   jo_int (j, "zone", event->ip6_info.ip.zone);
                   app_callback (0, topiccommand, NULL, "ipv6", j);
+#ifdef	CONFIG_REVK_ATE
+		  jo_console(&j);
+#else
                   jo_free (&j);
+#endif
                }
 #endif
                gotip |= (1 << ip_index);
@@ -2093,7 +2092,7 @@ task (void *pvParameters)
                   }             // No change - good
                   else
                      jo_bool (ate, "ok", 1);
-                  printf ("%s\n", jo_finisha (&ate));
+                  jo_console (&j);
                }
             }
          } else if (ate)
@@ -2450,7 +2449,7 @@ revk_ate_pass (void)
       b.atedone = 1;
       jo_t j = jo_object_alloc ();
       jo_bool (j, "ate", 1);
-      printf ("%s\n", jo_finisha (&j));
+      jo_console (&j);
    }
 #endif
 }
@@ -2466,7 +2465,7 @@ revk_ate_fail (const char *reason)
       jo_bool (j, "ate", 0);
       if (reason)
          jo_string (j, "reason", reason);
-      printf ("%s\n", jo_finisha (&j));
+      jo_console (&j);
    }
 #endif
 }
@@ -2490,7 +2489,7 @@ revk_boot (app_callback_t * app_callback_cb)
       jo_string (j, "version", app->version);
       if (revk_build_date_app (app, temp))
          jo_string (j, "build", temp);
-      printf ("\n%s\n", jo_finisha (&j));
+      jo_console (&j);
    }
 #endif
 #ifdef	CONFIG_REVK_GPIO_INIT
@@ -2944,6 +2943,20 @@ revk_mqtt_send_payload_clients (const char *prefix, int retain, const char *suff
 #else
    return "No MQTT";
 #endif
+}
+
+void
+revk_console (jo_t * jp)
+{                               // Send JSON to console
+   if (!jp || !*jp)
+      return;
+   int isalloc = jo_isalloc (*jp);
+   char *j = (isalloc ? jo_finisha (jp) : jo_finish (jp));
+   if (!j)
+      return;
+   printf ("%s\n", j);
+   if (isalloc)
+      free (j);
 }
 
 const char *
