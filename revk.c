@@ -280,6 +280,9 @@ static struct
    uint8_t factorywas:1;
    uint8_t factorycount:2;
    uint8_t factorytick:5;
+#ifdef	CONFIG_REVK_ATE
+   uint8_t atedone:1;
+#endif
 } volatile b = { 0 };
 
 static uint32_t up_next;        // next up report (uptime)
@@ -2429,15 +2432,23 @@ void
 revk_ate_pass (void)
 {
 #ifdef	CONFIG_REVK_ATE
-   printf ("ATE: PASS\n");
+   if (!b.atedone)
+   {
+      b.atedone = 1;
+      printf ("PASS:\n");
+   }
 #endif
 }
 
 void
-revk_ate_fail (void)
+revk_ate_fail (const char *why)
 {
 #ifdef	CONFIG_REVK_ATE
-   printf ("ATE: FAIL\n");
+   if (!b.atedone)
+   {
+      b.atedone = 1;
+      printf ("ATE: %s\n", why ? : "");
+   }
 #endif
 }
 
