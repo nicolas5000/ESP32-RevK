@@ -2447,7 +2447,7 @@ revk_ate_fail (const char *why)
    if (!b.atedone)
    {
       b.atedone = 1;
-      printf ("ATE: %s\n", why ? : "");
+      printf ("FAIL: %s\n", why ? : "");
    }
 #endif
 }
