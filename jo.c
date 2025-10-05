@@ -1175,29 +1175,32 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
             s = 0;
          else if (!s && (c == '[' || c == '{'))
             l++;
-         // We don't use process() as we are working on raw JSON bytes here
-         if (cmp)
-         {
-            if (!str)
-               continue;        // Uh
-            if (str >= end)
+         if (s || c > ' ')
+         {                      // Ignore unneeded white space
+            // We don't use process() as we are working on raw JSON bytes here
+            if (cmp)
             {
-               result = 1;      // Over end
-               continue;
-            }
-            int c2 = *str++;
-            if (c < c2)
-            {
-               result = -1;     // str>j
-               continue;
-            }
-            if (c > c2)
-            {
-               result = 1;      // str<j
-               continue;
-            }
-         } else
-            add (c);
+               if (!str)
+                  continue;     // Uh
+               if (str >= end)
+               {
+                  result = 1;   // Over end
+                  continue;
+               }
+               int c2 = *str++;
+               if (c < c2)
+               {
+                  result = -1;  // str>j
+                  continue;
+               }
+               if (c > c2)
+               {
+                  result = 1;   // str<j
+                  continue;
+               }
+            } else
+               add (c);
+         }
          if (!s && (c == ']' || c == '}') && !--l)
             break;
       }
