@@ -1203,7 +1203,7 @@ jo_cpycmp (jo_t j, void *strv, size_t max, uint8_t cmp)
       }
    } else
    {                            // Literal or number
-      while (limt-- && (c = jo_read (p)) >= 0 && c > ' ' && c != ',' && c != '[' && c != '{' && c != ']' && c != '}'
+      while (limit-- && (c = jo_read (p)) >= 0 && c > ' ' && c != ',' && c != '[' && c != '{' && c != ']' && c != '}'
              && (!cmp || !result))
          process (c);
    }
