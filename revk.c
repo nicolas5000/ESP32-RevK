@@ -2084,7 +2084,7 @@ task (void *pvParameters)
                   }             // No change - good
                   else
                      jo_bool (ate, "ok", 1);
-                  revk_console (&j);
+                  revk_console (&ate);
                }
             }
          } else if (ate)
