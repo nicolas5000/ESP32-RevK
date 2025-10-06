@@ -32,3 +32,5 @@ add_definitions(-DBUILD_ESP32_USING_CMAKE)
 
 # set_property(SOURCE "../../build/partition_table/partition-table.bin" PROPERTY GENERATED 1)
 
+# REVK_PARTITION_CHECK needs partition table
+
