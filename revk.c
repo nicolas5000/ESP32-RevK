@@ -2435,11 +2435,9 @@ gpio_ok (int8_t p)
 void
 revk_ate_pass (void)
 {
-	ESP_LOGE(TAG,"ATE PASS");
 #ifdef	CONFIG_REVK_ATE
    if (!b.atedone)
    {
-	ESP_LOGE(TAG,"ATE PASS");
       b.atedone = 1;
       jo_t j = jo_object_alloc ();
       jo_bool (j, "ate", 1);
