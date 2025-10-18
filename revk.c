@@ -23,7 +23,7 @@ static const char __attribute__((unused)) * TAG = "RevK";
 #ifdef	CONFIG_REVK_ATE_SETTINGS
 #ifdef  CONFIG_IDF_TARGET_ESP32S3
 #ifndef	CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
-#warning	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
+#error	You probably want CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG set for ATE using USB on ESP32S3
 #endif
 #endif
 #endif
