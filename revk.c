@@ -367,7 +367,7 @@ uptime (void)
 
 #if defined(CONFIG_REVK_WIFI) || defined(CONFIG_REVK_MESH)
 static void
-makeip (esp_netif_ip_info_t * info, const char *ip, const char *gw)
+makeip (esp_netif_ip_info_t *info, const char *ip, const char *gw)
 {
    char *i = strdup (ip);
    int cidr = 24;
@@ -390,7 +390,7 @@ makeip (esp_netif_ip_info_t * info, const char *ip, const char *gw)
 
 #ifdef CONFIG_REVK_MESH
 esp_err_t
-mesh_safe_send (const mesh_addr_t * to, const mesh_data_t * data, int flag, const mesh_opt_t opt[], int opt_count)
+mesh_safe_send (const mesh_addr_t *to, const mesh_data_t *data, int flag, const mesh_opt_t opt[], int opt_count)
 {                               // Mutex to protect non-re-entrant call
    if (!esp_mesh_is_device_active ())
       return ESP_ERR_MESH_DISCONNECTED;
@@ -418,7 +418,7 @@ mesh_safe_send (const mesh_addr_t * to, const mesh_data_t * data, int flag, cons
 #ifdef CONFIG_REVK_MESH
 // TODO esp_mesh_set_ie_crypto_funcs may be better way to do this in future - but need to de-dup if mesh system not fixed!
 esp_err_t
-mesh_encode_send (mesh_addr_t * addr, mesh_data_t * data, int flags)
+mesh_encode_send (mesh_addr_t *addr, mesh_data_t *data, int flags)
 {                               // Security - encode mesh message and send - **** THIS EXPECTS MESH_PAD AVAILABLE EXTRA BYTES ON SIZE ****
    // Note, at this point this does not protect against replay - critical messages should check timestamps to mitigate against replay
    // Add padding
@@ -443,7 +443,7 @@ mesh_encode_send (mesh_addr_t * addr, mesh_data_t * data, int flags)
 
 #ifdef CONFIG_REVK_MESH
 esp_err_t
-mesh_decode (mesh_addr_t * addr, mesh_data_t * data)
+mesh_decode (mesh_addr_t *addr, mesh_data_t *data)
 {                               // Security - decode mesh message
    addr = addr;                 // Not used
    if (data->size < 32 || (data->size & 15))
@@ -2464,7 +2464,7 @@ revk_ate_fail (const char *reason)
 
 /* External functions */
 void
-revk_boot (app_callback_t * app_callback_cb)
+revk_boot (app_callback_t *app_callback_cb)
 {                               /* Start the revk task, use __FILE__ and __DATE__ and __TIME__ to set task name and version ID */
 #if	CONFIG_REVK_GPIO_POWER >= 0
    gpio_hold_dis (CONFIG_REVK_GPIO_POWER);
@@ -2812,7 +2812,7 @@ revk_task (const char *tag, TaskFunction_t t, const void *param, int kstack)
 
 #ifdef	CONFIG_REVK_MESH
 void
-mesh_make_mqtt (mesh_data_t * data, uint8_t tag, int tlen, const char *topic, int plen, const unsigned char *payload)
+mesh_make_mqtt (mesh_data_t *data, uint8_t tag, int tlen, const char *topic, int plen, const unsigned char *payload)
 {
    // Tag is typically bit map of clients with bit 7 for retain when sending to root, and is client number when sending to leaf
    memset (data, 0, sizeof (*data));
@@ -2837,7 +2837,7 @@ mesh_make_mqtt (mesh_data_t * data, uint8_t tag, int tlen, const char *topic, in
 
 #ifdef	CONFIG_REVK_MESH
 void
-revk_mesh_send_json (const mac_t mac, jo_t * jp)
+revk_mesh_send_json (const mac_t mac, jo_t *jp)
 {
    if (!jp)
       return;
@@ -2938,7 +2938,7 @@ revk_mqtt_send_payload_clients (const char *prefix, int retain, const char *suff
 }
 
 void
-revk_console (jo_t * jp)
+revk_console (jo_t *jp)
 {                               // Send JSON to console
    if (!jp || !*jp)
       return;
@@ -2952,7 +2952,7 @@ revk_console (jo_t * jp)
 }
 
 const char *
-revk_mqtt_send_clients (const char *prefix, int retain, const char *suffix, jo_t * jp, uint8_t clients)
+revk_mqtt_send_clients (const char *prefix, int retain, const char *suffix, jo_t *jp, uint8_t clients)
 {
    const char *err = NULL;
    if (b.disablewifi)
@@ -2997,19 +2997,19 @@ revk_mqtt_send_clients (const char *prefix, int retain, const char *suffix, jo_t
 }
 
 const char *
-revk_state_clients (const char *suffix, jo_t * jp, uint8_t clients)
+revk_state_clients (const char *suffix, jo_t *jp, uint8_t clients)
 {                               // State message (retained)
    return revk_mqtt_send_clients (topicstate, 1, suffix, jp, clients);
 }
 
 const char *
-revk_event_clients (const char *suffix, jo_t * jp, uint8_t clients)
+revk_event_clients (const char *suffix, jo_t *jp, uint8_t clients)
 {                               // Event message (may one day create log entries)
    return revk_mqtt_send_clients (topicevent, 0, suffix, jp, clients);
 }
 
 const char *
-revk_error_clients (const char *suffix, jo_t * jp, uint8_t clients)
+revk_error_clients (const char *suffix, jo_t *jp, uint8_t clients)
 {                               // Error message, waits a while for connection if possible before sending
    if (*mqtthost[0])
       xEventGroupWaitBits (revk_group,
@@ -3021,7 +3021,7 @@ revk_error_clients (const char *suffix, jo_t * jp, uint8_t clients)
 }
 
 const char *
-revk_info_clients (const char *suffix, jo_t * jp, uint8_t clients)
+revk_info_clients (const char *suffix, jo_t *jp, uint8_t clients)
 {                               // Info message, nothing special
    return revk_mqtt_send_clients (topicinfo, 0, suffix, jp, clients);
 }
@@ -3082,7 +3082,7 @@ revk_num_web_handlers (void)
 
 #if  defined(CONFIG_REVK_APCONFIG) || defined(CONFIG_REVK_WEB_DEFAULT)
 void
-revk_web_dummy (httpd_handle_t * webp, uint16_t port)
+revk_web_dummy (httpd_handle_t *webp, uint16_t port)
 {                               // Just settings
    httpd_config_t config = HTTPD_DEFAULT_CONFIG ();
    config.lru_purge_enable = true;
@@ -3213,7 +3213,7 @@ revk_web_settings_add (httpd_handle_t webserver)
 }
 
 jo_t
-revk_web_query (httpd_req_t * req)
+revk_web_query (httpd_req_t *req)
 {                               // get POST/GET form data as JSON
    jo_t j = NULL;
    char *query = NULL;
@@ -3251,7 +3251,7 @@ revk_web_query (httpd_req_t * req)
 }
 
 void
-revk_web_send (httpd_req_t * req, const char *format, ...)
+revk_web_send (httpd_req_t *req, const char *format, ...)
 {
    char *v = NULL;
    va_list ap;
@@ -3278,7 +3278,7 @@ revk_web_config_remove (httpd_handle_t webserver)
 }
 
 void
-revk_web_head (httpd_req_t * req, const char *title)
+revk_web_head (httpd_req_t *req, const char *title)
 {                               // Generic HTML heading
    char *qs = NULL;
    httpd_resp_set_type (req, "text/html;charset=utf-8");
@@ -3311,7 +3311,7 @@ revk_web_head (httpd_req_t * req, const char *title)
 }
 
 esp_err_t
-revk_web_foot (httpd_req_t * req, uint8_t home, uint8_t wifi, const char *extra)
+revk_web_foot (httpd_req_t *req, uint8_t home, uint8_t wifi, const char *extra)
 {                               // Generic html footing and return
    char *qs = NULL;
    revk_web_send (req, "<hr><address>");
@@ -3361,7 +3361,7 @@ get_status_text (void)
 
 #ifndef  CONFIG_REVK_OLD_SETTINGS
 void
-revk_web_setting_title (httpd_req_t * req, const char *fmt, ...)
+revk_web_setting_title (httpd_req_t *req, const char *fmt, ...)
 {
    char *info = NULL;
    va_list ap;
@@ -3375,7 +3375,7 @@ revk_web_setting_title (httpd_req_t * req, const char *fmt, ...)
 
 #ifndef  CONFIG_REVK_OLD_SETTINGS
 void
-revk_web_setting_info (httpd_req_t * req, const char *fmt, ...)
+revk_web_setting_info (httpd_req_t *req, const char *fmt, ...)
 {
    char *info = NULL;
    va_list ap;
@@ -3389,7 +3389,7 @@ revk_web_setting_info (httpd_req_t * req, const char *fmt, ...)
 
 #ifndef  CONFIG_REVK_OLD_SETTINGS
 void
-revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
+revk_web_setting_edit (httpd_req_t *req, const char *tag, const char *field, const char *place)
 {
    int index = 0;
    revk_settings_t *s = revk_settings_find (field, &index);
@@ -3469,15 +3469,16 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
    if (s->comment)
       comment = s->comment;
 #endif
-   const char *place = "";
+   if (!place && s->ptr == &hostname)
+      place = revk_id;          // Special case
 #ifdef  REVK_SETTINGS_HAS_PLACE
-   if (s->place)
+   if (!place && s->place)
       place = s->place;
 #endif
+   if (!place)
+      place = "";
    if (s->gpio && !*place)
       place = "Unused";
-   if (s->ptr == &hostname)
-      place = revk_id;          // Special case
 #ifdef  REVK_SETTINGS_HAS_ENUM
    if (s->isenum)
    {
@@ -3601,7 +3602,7 @@ revk_web_setting (httpd_req_t * req, const char *tag, const char *field)
 #define	revk_web_setting_s(req,prefix,field,value,place,suffix) revk_web_setting(req,prefix,field)
 #else
 void
-revk_web_setting_s (httpd_req_t * req, const char *tag, const char *field, char *value, const char *place, const char *suffix)
+revk_web_setting_s (httpd_req_t *req, const char *tag, const char *field, char *value, const char *place, const char *suffix)
 {
    char *qs = NULL;
    revk_web_send (req,
@@ -3616,7 +3617,7 @@ extern revk_settings_t revk_settings[];
 #endif
 
 esp_err_t
-revk_web_settings (httpd_req_t * req)
+revk_web_settings (httpd_req_t *req)
 {
    if (b.disablesettings)
       return ESP_OK;
@@ -4083,7 +4084,7 @@ revk_web_settings (httpd_req_t * req)
 
 #ifdef	CONFIG_HTTPD_WS_SUPPORT
 esp_err_t
-revk_web_status (httpd_req_t * req)
+revk_web_status (httpd_req_t *req)
 {
    wifi_mode_t mode = 0;
    esp_wifi_get_mode (&mode);
@@ -4206,7 +4207,7 @@ revk_web_status (httpd_req_t * req)
 #warning	You may want CONFIG_HTTPD_WS_SUPPORT
 #endif
 esp_err_t
-revk_web_status (httpd_req_t * req)
+revk_web_status (httpd_req_t *req)
 {
    const char *shutdown = NULL;
    revk_shutting_down (&shutdown);
@@ -5069,7 +5070,7 @@ jo_make (const char *node)
 }
 
 const char *
-revk_build_date_app (const esp_app_desc_t * app, char d[20])
+revk_build_date_app (const esp_app_desc_t *app, char d[20])
 {
    if (!d)
       return NULL;
@@ -5639,7 +5640,7 @@ revk_gpio_get (revk_gpio_t g)
 }
 
 void
-revk_mqtt_sub (int client, const char *topic, revk_mqtt_cb_t * cb, void *arg)
+revk_mqtt_sub (int client, const char *topic, revk_mqtt_cb_t *cb, void *arg)
 {                               // Subscribe (does so on reconnect as well) - calls back when received
    if (client >= CONFIG_REVK_MQTT_CLIENTS || !topic)
       return;
