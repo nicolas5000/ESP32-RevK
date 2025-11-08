@@ -245,7 +245,7 @@ esp_err_t revk_web_settings (httpd_req_t * req);        // Call for web config f
 void revk_web_setting_title (httpd_req_t * req, const char *fmt,...); // Text info in settings (th)
 void revk_web_setting_info (httpd_req_t * req, const char *fmt,...); // Text info in settings
 void revk_web_setting (httpd_req_t * req, const char *tag, const char *field,const char *placeholder);
-#define revk_web_setting (req,tag,field) revk_web_setting_edit(req,tag,field,NULL)
+#define revk_web_setting(req,tag,field) revk_web_setting_edit(req,tag,field,NULL)
 esp_err_t revk_web_status (httpd_req_t * req);  // Call for web config for SSID/password/mqtt (WS)
 esp_err_t revk_web_wifilist (httpd_req_t * req);        // WS for list of SSIDs
 void revk_web_head (httpd_req_t * req, const char *title);      // Generic html heading
