@@ -2541,7 +2541,7 @@ revk_boot (app_callback_t *app_callback_cb)
    else
       ESP_LOGI (TAG, "nvs_open_from_partition");
 #ifndef	CONFIG_REVK_OLD_SETTINGS
-   revk_settings_load (TAG, *REVK_SETTINGS_NVS ? REVK_SETTINGS_NVS : app->project_name);
+   revk_settings_load (TAG, *CONFIG_REVK_SETTINGS_NVS ? CONFIG_REVK_SETTINGS_NVS : app->project_name);
 #else
    if (nvs_open_from_partition (TAG, TAG, NVS_READWRITE, &revk_nvs))
    {
