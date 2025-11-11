@@ -963,7 +963,7 @@ revk_send_subunsub (int client, const mac_t mac, uint8_t sub)
          freez (topic);
       }
       send (id);
-      send (prefixapp ? "*" : revk_app); // All apps
+      send (prefixapp ? "*" : revk_app);        // All apps
       if (*hostname && strcmp (hostname, id))
          send (hostname);       // Hostname as well as MAC
 #ifndef  CONFIG_REVK_OLD_SETTINGS
@@ -1276,7 +1276,7 @@ revk_mqtt_init (void)
          if (!(config.topic = revk_topic (topicstate, NULL, NULL)))
             return;             // No topic created!
          if ((strcmp (hostname, revk_id) ?      //
-              asprintf ((void *) &config.client, "%s:%s_%s", revk_app, hostname, revk_id + 6) :  //
+              asprintf ((void *) &config.client, "%s:%s_%s", revk_app, hostname, revk_id + 6) : //
               asprintf ((void *) &config.client, "%s:%s", revk_app, hostname)) < 0)
          {
             freez (config.topic);
@@ -2541,7 +2541,7 @@ revk_boot (app_callback_t *app_callback_cb)
    else
       ESP_LOGI (TAG, "nvs_open_from_partition");
 #ifndef	CONFIG_REVK_OLD_SETTINGS
-   revk_settings_load (TAG, app->project_name);
+   revk_settings_load (TAG, *REVK_SETTINGS_NVS ? REVK_SETTINGS_NVS : app->project_name);
 #else
    if (nvs_open_from_partition (TAG, TAG, NVS_READWRITE, &revk_nvs))
    {
@@ -4583,7 +4583,7 @@ revk_upgrade_url (const char *val, const char *ext)
 #ifdef	CONFIG_REVK_WEB_BETA
                 otabeta ? "beta/" :
 #endif
-                "", revk_app, revk_build_suffix, ext, revk_id);  // Hostname provided
+                "", revk_app, revk_build_suffix, ext, revk_id); // Hostname provided
    return url;
 }
 

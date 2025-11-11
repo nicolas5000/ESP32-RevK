@@ -545,6 +545,12 @@ menu "RevK"
         help
 		Include lunar tools
 
+	config REVK_OLD_SETTINGS
+	bool "Use old settings library"
+	default y
+        help
+		Use old settings librarey
+
 	config REVK_SETTINGS_PASSWORD
 	bool "Simple password control on settings"
 	depends on !REVK_OLD_SETTINGS
@@ -552,11 +558,12 @@ menu "RevK"
         help
 		Simple password control on settings
 
-	config REVK_OLD_SETTINGS
-	bool "Use old settings library"
-	default y
+	config REVK_SETTINGS_NVS
+	string "NVS name for settings"
+	depends on !REVK_OLD_SETTINGS
+	default ""
         help
-		Use old settings librarey
+		NVS name for settings (uses app name if blank)
 
 	config REVK_GPIO_INIT
 	bool "Reset GPIO on startup"
