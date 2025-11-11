@@ -6,8 +6,6 @@ s	hostname				.revk .hide			// Hostname[.local]<br>(used in DHCP and MQTT)
 #else
 s	hostname				.revk .hide			// Host name<br>(used in DHCP and MQTT)
 #endif
-// Appname is not something you should changing usually so leave as MQTT only
-s	appname		CONFIG_REVK_APPNAME	.revk .hide		// Application name
 
 s	ota.host	CONFIG_REVK_OTAHOST	.revk	.live		// OTA hostname
 u8	ota.days	CONFIG_REVK_OTADAYS	.revk			// OTA auto load (days)

@@ -115,7 +115,6 @@ const char revk_build_suffix[] = CONFIG_REVK_BUILD_SUFFIX;
 		s(ntphost,CONFIG_REVK_NTPHOST);		\
 		s(tz,CONFIG_REVK_TZ);			\
 		u32(watchdogtime,CONFIG_REVK_WATCHDOG);			\
-		s(appname,CONFIG_REVK_APPNAME);		\
 		s(nodename,NULL);			\
 		s(hostname,NULL);			\
 		p(command);				\
@@ -912,17 +911,17 @@ revk_topic (const char *name, const char *id, const char *suffix)
    if (prefixhost)
    {
       if (prefixapp)
-         t[tn++] = appname;
+         t[tn++] = revk_app;
       if (id)
          t[tn++] = id;
-      if (name && (!prefixapp || name != appname))
+      if (name && (!prefixapp || name != revk_app))
          t[tn++] = name;
    } else
    {
       if (name)
          t[tn++] = name;
-      if (prefixapp && name != appname)
-         t[tn++] = appname;
+      if (prefixapp && name != revk_app)
+         t[tn++] = revk_app;
       if (id)
          t[tn++] = id;
    }
@@ -964,7 +963,7 @@ revk_send_subunsub (int client, const mac_t mac, uint8_t sub)
          freez (topic);
       }
       send (id);
-      send (prefixapp ? "*" : appname); // All apps
+      send (prefixapp ? "*" : revk_app); // All apps
       if (*hostname && strcmp (hostname, id))
          send (hostname);       // Hostname as well as MAC
 #ifndef  CONFIG_REVK_OLD_SETTINGS
@@ -1024,8 +1023,8 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
       }
       void getapp (void)
       {                         // Get app, only if app expected and correct
-         int l = strlen (appname);
-         if (!prefixapp || strncmp (p, appname, l) || (p[l] && p[l] != '/'))
+         int l = strlen (revk_app);
+         if (!prefixapp || strncmp (p, revk_app, l) || (p[l] && p[l] != '/'))
             return;             // Not a expected, or correct, app prefix
          apppart = p;
          while (*p && *p != '/')
@@ -1044,7 +1043,7 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
             p++;
       }
       if (prefixhost)
-      {                         // We expect (appname/)id first
+      {                         // We expect (revk_app/)id first
          getapp ();
          gettarget ();
          getprefix ();
@@ -1147,7 +1146,7 @@ mqtt_rx (void *arg, char *topic, unsigned short plen, unsigned char *payload)
       {
          if (target && (!prefixapp || apppart))
          {
-            if (!strcmp (target, prefixapp ? "*" : appname) || !strcmp (target, revk_id)
+            if (!strcmp (target, prefixapp ? "*" : revk_app) || !strcmp (target, revk_id)
                 || (*hostname && !strcmp (target, hostname)))
                target = NULL;   // Mark as us for simple testing by app_command, etc
 #ifndef  CONFIG_REVK_OLD_SETTINGS
@@ -1277,8 +1276,8 @@ revk_mqtt_init (void)
          if (!(config.topic = revk_topic (topicstate, NULL, NULL)))
             return;             // No topic created!
          if ((strcmp (hostname, revk_id) ?      //
-              asprintf ((void *) &config.client, "%s:%s_%s", appname, hostname, revk_id + 6) :  //
-              asprintf ((void *) &config.client, "%s:%s", appname, hostname)) < 0)
+              asprintf ((void *) &config.client, "%s:%s_%s", revk_app, hostname, revk_id + 6) :  //
+              asprintf ((void *) &config.client, "%s:%s", revk_app, hostname)) < 0)
          {
             freez (config.topic);
             return;
@@ -2229,7 +2228,7 @@ task (void *pvParameters)
 #ifdef	CONFIG_NVS_ENCRYPTION
                   jo_bool (j, "nvsecryption", 1);
 #endif
-                  jo_string (j, "app", appname);
+                  jo_string (j, "app", revk_app);
                   jo_string (j, "version", revk_version);
                   jo_string (j, "build-suffix", revk_build_suffix);
                   {             // Stupid format Jul 10 2021
@@ -2626,8 +2625,6 @@ revk_boot (app_callback_t *app_callback_cb)
       compat_task_wdt_reconfigure (true, watchdogtime * 1000, true);
    }
    /* Application specific settings */
-   if (!*appname)
-      appname = strdup (app->project_name);
 #ifdef	CONFIG_REVK_APMODE
    if (apgpio.set)
    {
@@ -2659,7 +2656,7 @@ revk_boot (app_callback_t *app_callback_cb)
          hostname = revk_id;    // default hostname (special case in settings)
    }
    revk_version = app->version;
-   revk_app = appname;
+   revk_app = app->project_name;
    char *d = strstr (revk_version, "-dirty");
    if (d)
       asprintf ((char **) &revk_version, "%.*s+", d - revk_version, app->version);
@@ -2695,7 +2692,7 @@ revk_start (void)
    /* DHCP */
    char *id = NULL;
 #ifdef	CONFIG_REVK_PREFIXAPP
-   asprintf (&id, "%s-%s", appname, hostname);
+   asprintf (&id, "%s-%s", revk_app, hostname);
 #else
    asprintf (&id, "%s", hostname);
 #endif
@@ -2707,7 +2704,7 @@ revk_start (void)
 #ifdef  CONFIG_MDNS_MAX_INTERFACES
    REVK_ERR_CHECK (mdns_init ());
    mdns_hostname_set (hostname);
-   mdns_instance_name_set (appname);
+   mdns_instance_name_set (revk_app);
 #endif
 #endif
 #endif
@@ -3233,7 +3230,7 @@ revk_web_head (httpd_req_t *req, const char *title)
 #ifndef CONFIG_HTTPD_WS_SUPPORT
                   " onLoad='handleLoad()'"
 #endif
-                  ">", revk_web_safe (&qs, title ? : appname));
+                  ">", revk_web_safe (&qs, title ? : revk_app));
    free (qs);
 }
 
@@ -3250,7 +3247,7 @@ revk_web_foot (httpd_req_t *req, uint8_t home, uint8_t wifi, const char *extra)
                      "?_page=0"
 #endif
                      ">Settings</a> ");
-   revk_web_send (req, appname);
+   revk_web_send (req, revk_app);
    if (*revk_build_suffix)
       revk_web_send (req, "<small>%s</small>", revk_build_suffix);
    char temp[20];
@@ -3695,7 +3692,7 @@ revk_web_settings (httpd_req_t *req)
          }
          addpage (-1, "Basic");
 #ifdef	CONFIG_REVK_WEB_EXTRA
-         addpage (0, appname);
+         addpage (0, revk_app);
 #endif
 #ifndef  CONFIG_REVK_OLD_SETTINGS
          for (revk_settings_t * s = revk_settings; s->len; s++)
@@ -4249,9 +4246,9 @@ make_ap_name (void *ssid)
       l = snprintf (ssid, 32, "%s", apssid);
    else
 #ifdef	CONFIG_REVK_APDNS
-      l = snprintf (ssid, 32, "%s-%012llX", appname, revk_binid);
+      l = snprintf (ssid, 32, "%s-%012llX", revk_app, revk_binid);
 #else
-      l = snprintf (ssid, 32, "%s-10.%d.%d.1", appname, (uint8_t) (revk_binid >> 8), (uint8_t) (revk_binid & 255));
+      l = snprintf (ssid, 32, "%s-10.%d.%d.1", revk_app, (uint8_t) (revk_binid >> 8), (uint8_t) (revk_binid & 255));
 #endif
    if (l > 32)
       l = 32;
@@ -4586,7 +4583,7 @@ revk_upgrade_url (const char *val, const char *ext)
 #ifdef	CONFIG_REVK_WEB_BETA
                 otabeta ? "beta/" :
 #endif
-                "", appname, revk_build_suffix, ext, revk_id);  // Hostname provided
+                "", revk_app, revk_build_suffix, ext, revk_id);  // Hostname provided
    return url;
 }
 
@@ -4751,7 +4748,7 @@ revk_command (const char *tag, jo_t j)
          *val = 0;
       if (strncmp (val, revk_id, strlen (revk_id)))
          return "Bad ID";
-      if (strcmp (val + strlen (revk_id), appname))
+      if (strcmp (val + strlen (revk_id), revk_app))
          return "Bad appname";
       const esp_app_desc_t *app = esp_app_get_description ();
       revk_settings_factory (TAG, app->project_name, tag[1] == 'u');
@@ -5671,7 +5668,7 @@ revk_gfx_init (uint32_t secs)
       status = newstatus;
       gfx_lock ();
       gfx_clear (0);
-      t (1, s + 2, appname);
+      t (1, s + 2, revk_app);
       t (1, s, hostname);
       l ();
       if (status & 4)
