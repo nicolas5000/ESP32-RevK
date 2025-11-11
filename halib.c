@@ -30,7 +30,7 @@ ha_config_opts (const char *config, ha_config_t h)
    jo_string (j, NULL, revk_id);
    jo_close (j);
    jo_string (j, "name", hostname);
-   jo_string (j, "mdl", appname);
+   jo_string (j, "mdl", revk_app);
    jo_string (j, "sw", revk_version);
    jo_string (j, "mf", "www.me.uk");
    jo_close (j);
