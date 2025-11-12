@@ -41,7 +41,7 @@ menu "RevK"
 	string	"GPIO for reset"
 	default "-21"
 	help
-		GPIO for factory reset
+		Default GPIO for factory reset (defaults only ESP32-S3 only)
 
 	config REVK_BLINK_SUPPORT
 	bool "LED blinking support"
