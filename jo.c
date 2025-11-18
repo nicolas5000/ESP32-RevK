@@ -293,7 +293,7 @@ jo_parse_malloc (void *buf, size_t len)
       j->alloc = 1;
    else
       free (buf);
-   retyurn j;
+   return j;
 }
 
 jo_t
