@@ -38,6 +38,9 @@ jo_t jo_parse_query (const char *buf);
 // Start parsing a JSON string in memory - does not need a null - buf has to stay valid
 jo_t jo_parse_mem (const void *buf, size_t len);
 
+// Parse malloc'd mem - either ends up as alloc'd in j to be freed later when j is deleted, or is freed if j fails.
+jo_t jo_parse_malloc(void *buf, size_t len);
+
 // Start creating JSON in memory at buf, max space len.
 jo_t jo_create_mem (void *buf, size_t len);
 

@@ -142,7 +142,7 @@ jo_char (jo_t j, const char c)
 }
 
 jo_t
-jo_pad (jo_t * jp, int n)
+jo_pad (jo_t *jp, int n)
 {                               // Ensure padding available
    if (!jp)
       return NULL;
@@ -286,6 +286,17 @@ jo_parse_mem (const void *buf, size_t len)
 }
 
 jo_t
+jo_parse_malloc (void *buf, size_t len)
+{                               // Parse malloc'd mem - either ends up as alloc'd in j to be freed later when j is deleted, or is freed if j fails.
+   jo_t j = jo_parse_mem (buf, len);
+   if (j)
+      j->alloc = 1;
+   else
+      free (buf);
+   retyurn j;
+}
+
+jo_t
 jo_create_mem (void *buf, size_t len)
 {                               // Start creating JSON in memory at buf, max space len.
    jo_t j = jo_new ();
@@ -406,7 +417,7 @@ jo_error (jo_t j, int *pos)
 }
 
 void
-jo_free (jo_t * jp)
+jo_free (jo_t *jp)
 {                               // Free j
    if (!jp)
       return;
@@ -428,7 +439,7 @@ jo_isalloc (jo_t j)
 }
 
 char *
-jo_finish (jo_t * jp)
+jo_finish (jo_t *jp)
 {                               // Finish creating static JSON, return start of static JSON if no error. Frees j. It is an error to use with jo_create_alloc
    if (!jp)
       return NULL;
@@ -452,7 +463,7 @@ jo_finish (jo_t * jp)
 }
 
 char *
-jo_finisha (jo_t * jp)
+jo_finisha (jo_t *jp)
 {                               // Finish creating allocated JSON, returns start of alloc'd memory if no error.
    // Frees j. If NULL returned then any allocated space also freed
    // It is an error to use with non jo_create_alloc
