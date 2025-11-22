@@ -13,7 +13,7 @@ if(! -e "$SDKCONFIG") then
 	exit 0
 endif
 
-# The variants are per silicon, e.g. 8266, ESP32, ESP32S1, ESP32S2, ESP32S3, ESP32C3, ESP32H2 can all have different options
+# The variants are per silicon, e.g. 8266, ESP32, ESP32S1, ESP32S2, ESP32S3, ESP32C3, ESP32C6, ESP32H2 can all have different options
 
 set add=()
 set rem=()
@@ -169,6 +169,15 @@ if("$BUILDSUFFIX" =~ *-C3*) then
 	grep -q CONFIG_IDF_TARGET_ESP32C3=y "$SDKCONFIG"
 	if($status) then
 		idf.py set-target esp32c3
+		setenv CHANGED	1
+	endif
+
+endif
+
+if("$BUILDSUFFIX" =~ *-C6*) then
+	grep -q CONFIG_IDF_TARGET_ESP32C6=y "$SDKCONFIG"
+	if($status) then
+		idf.py set-target esp32c6
 		setenv CHANGED	1
 	endif
 

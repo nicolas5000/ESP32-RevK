@@ -2418,6 +2418,16 @@ gpio_ok (int8_t p)
       return 0;
    return 3;                    // All input and output
 #endif
+   // ESP32 (C6)
+#ifdef	CONFIG_IDF_TARGET_ESP32C6
+   if (p > 21)
+      return 0;
+   if (p == 18 || p == 19)
+      return 4;                 // special use (USB)
+   if (p >= 12 && p <= 17)
+      return 0;
+   return 3;                    // All input and output
+#endif
    // ESP8266
 #ifdef CONFIG_IDF_TARGET_ESP8266
    // PLEASE do not remove this!!! Hitting any of these GPIOs in revk_boot()
@@ -5459,8 +5469,10 @@ revk_gpio_output (revk_gpio_t g, uint8_t o)
    if (!g.set || !GPIO_IS_VALID_OUTPUT_GPIO (g.num))
       e = ESP_FAIL;
 #ifndef	CONFIG_IDF_TARGET_ESP32C3
+#ifndef	CONFIG_IDF_TARGET_ESP32C6
    if (!e && rtc_gpio_is_valid_gpio (g.num))
       e = rtc_gpio_deinit (g.num);
+#endif
 #endif
    if (!e)
       e = gpio_reset_pin (g.num);
@@ -5472,6 +5484,7 @@ revk_gpio_output (revk_gpio_t g, uint8_t o)
    if (!e)
       e = gpio_set_drive_capability (g.num, 2 + g.strong - g.weak * 2);
 #ifndef	CONFIG_IDF_TARGET_ESP32C3
+#ifndef	CONFIG_IDF_TARGET_ESP32C6
    if (!e && rtc_gpio_is_valid_gpio (g.num))
    {
       if (!e)
@@ -5479,6 +5492,7 @@ revk_gpio_output (revk_gpio_t g, uint8_t o)
       if (!e)
          e = rtc_gpio_set_drive_capability (g.num, 2 + g.strong - g.weak * 2);
    }
+#endif
 #endif
 #else
    if (!e)
@@ -5502,8 +5516,10 @@ revk_gpio_input (revk_gpio_t g)
    if (!g.set || !GPIO_IS_VALID_GPIO (g.num))
       e = ESP_FAIL;
 #ifndef	CONFIG_IDF_TARGET_ESP32C3
+#ifndef	CONFIG_IDF_TARGET_ESP32C6
    if (!e && rtc_gpio_is_valid_gpio (g.num))
       e = rtc_gpio_deinit (g.num);
+#endif
 #endif
    if (!e)
       e = gpio_reset_pin (g.num);
@@ -5529,6 +5545,7 @@ revk_gpio_input (revk_gpio_t g)
          e = gpio_pulldown_dis (g.num);
    }
 #ifndef CONFIG_IDF_TARGET_ESP32C3
+#ifndef CONFIG_IDF_TARGET_ESP32C6
    if (rtc_gpio_is_valid_gpio (g.num))
    {
       if (!g.pulldown && !g.nopull)
@@ -5550,6 +5567,7 @@ revk_gpio_input (revk_gpio_t g)
             e = rtc_gpio_pulldown_dis (g.num);
       }
    }
+#endif
 #endif
 #endif
    return e;
