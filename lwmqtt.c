@@ -777,7 +777,7 @@ client_task (void *pvParameters)
                tls = esp_tls_init ();
                if (esp_tls_conn_new_sync (hostname, strlen (hostname), port, &cfg, tls) != 1)
                {
-                  free (tls);
+		  esp_tls_conn_destroy(tls);
                   return 0;
                }
                handle->tls = tls;
