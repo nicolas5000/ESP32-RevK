@@ -3777,6 +3777,8 @@ revk_web_settings (httpd_req_t *req)
             revk_web_setting_s (req, "MQTT host", "mqtthost", mqtthost[0], "hostname", NULL);
             revk_web_setting_s (req, "MQTT user", "mqttuser", mqttuser[0], "username", NULL);
             revk_web_setting_s (req, "MQTT pass", "mqttpass", mqttpass[0], "password", NULL);
+            if (mqttport != 1883)
+               revk_web_setting (req, "MQTT port", "mqttport");
 #ifdef	CONFIG_REVK_WEB_TZ
             hr ();
             revk_web_setting_s (req, "Timezone", "tz", tz, "TZ code",
