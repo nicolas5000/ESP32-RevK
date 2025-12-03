@@ -3788,7 +3788,7 @@ revk_web_settings (httpd_req_t *req)
             if (!*password)
                revk_web_setting_info (req, "Be careful setting this as you will need it to make any more changes.");
             revk_web_setting_s (req, "Password", "password", password, NULL,
-                                "Settings password (not sent securely, so use with care on local network you control)");
+                                "Settings password (may not sent securely, so use with care on local network you control)");
 #endif
          }
          break;
