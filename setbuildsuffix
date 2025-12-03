@@ -9,8 +9,11 @@ setenv SDKCONFIG "sdkconfig"
 if("$1" != "") setenv SDKCONFIG "$1"
 
 if(! -e "$SDKCONFIG") then
-	echo "Missing $SDKCONFIG"
-	exit 0
+	if(! -e sdkconfig.default)
+		echo "Missing $SDKCONFIG"
+		exit 0
+	endif
+	cp sdkconfig.default "$SDKCONFIG"
 endif
 
 # The variants are per silicon, e.g. 8266, ESP32, ESP32S1, ESP32S2, ESP32S3, ESP32C3, ESP32C6, ESP32H2 can all have different options
