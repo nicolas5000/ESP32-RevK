@@ -3890,7 +3890,7 @@ revk_web_settings (httpd_req_t *req)
    revk_web_send (req, "<script>"       //
                   "var f=document.settings;"    //
                   "var reboot=0;"       //
-                  "var ws = new WebSocket('ws://'+window.location.host+'/revk-status');ws.onopen=function(v){ws.send('%s');};"  //
+                  "var ws = new WebSocket((window.location.protocol=='https:'?'wss://':'ws://')+window.location.host+'/revk-status');ws.onopen=function(v){ws.send('%s');};"  //
                   "ws.onclose=function(v){ws=undefined;document.getElementById('_msg').textContent=(reboot?'Rebooting':'…');if(reboot)setTimeout(function(){location.href='/';},3000);};"     //
                   "ws.onerror=function(v){ws.close();};"        //
                   "ws.onmessage=function(e){"   //
