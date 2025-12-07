@@ -2420,12 +2420,12 @@ gpio_ok (int8_t p)
 #endif
    // ESP32 (C6)
 #ifdef	CONFIG_IDF_TARGET_ESP32C6
-   if (p > 21)
+   if (p > 23)
       return 0;
-   if (p == 18 || p == 19)
+   if (p == 12 || p == 13)
       return 4;                 // special use (USB)
-   if (p >= 12 && p <= 17)
-      return 0;
+   if (p == 16 || p == 17)
+      return 3 + 8;             // Serial
    return 3;                    // All input and output
 #endif
    // ESP8266
