@@ -1902,7 +1902,11 @@ revk_blink_init (void)
                ),
             .max_leds = 1,      // The number of LEDs in the strip,
 #ifdef	LED_STRIP_COLOR_COMPONENT_FMT_GRB
+#ifdef	CONFIG_REVK_BLINK_WS2812_DEF
+            .color_component_format = ws2812rgb ? LED_STRIP_COLOR_COMPONENT_FMT_RGB : LED_STRIP_COLOR_COMPONENT_FMT_GRB,
+#else
             .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
+#endif
 #else
             .led_pixel_format = LED_PIXEL_FORMAT_GRB,
 #endif
